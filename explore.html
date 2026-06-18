@@ -190,10 +190,10 @@
       gap: 1.5rem;
     }
 
-    /* 单个图片占位框：无图时固定4:3，有图时自适应 */
+    /* 单个图片占位框：固定 4:3 框架 */
     .photo-placeholder {
       position: relative;
-      aspect-ratio: 4 / 3;            /* 默认固定比例（无图占位框） */
+      aspect-ratio: 4 / 3;            /* 固定 4:3 框架 */
       border: 1.5px dashed rgba(255, 255, 255, 0.15);
       border-radius: 10px;
       overflow: hidden;
@@ -201,11 +201,6 @@
       transition: transform 0.35s var(--ease-out-quart),
                   border-color 0.3s ease,
                   box-shadow 0.3s ease;
-    }
-
-    /* 有图片时：取消固定宽高比，让容器跟随图片自然尺寸 */
-    .photo-placeholder.has-image {
-      aspect-ratio: auto;
     }
 
     /* 图片占位框悬停效果：轻微放大 + 暖橙边框光晕 */
@@ -249,15 +244,15 @@
     /* 当占位框内有真实图片时，用此类覆盖 */
     .photo-placeholder__img {
       width: 100%;
-      height: auto;                /* 高度由图片自身决定，驱动容器 */
-      display: none;               /* 默认隐藏，放入图片后改为 display:block */
+      height: 100%;               /* 高度填充整个框架 */
+      object-fit: cover;          /* 保持比例，裁剪溢出部分 */
+      display: none;              /* 默认隐藏，放入图片后改为 display:block */
     }
 
-    /* 有图片时：显示图片、隐藏序号和提示、加暗色背景防留白突兀 */
+    /* 有图片时：显示图片、隐藏序号和提示、修改边框样式 */
     .photo-placeholder.has-image {
       border-style: solid;
       border-color: rgba(255, 255, 255, 0.1);
-      background-color: rgba(15, 36, 59, 0.5);   /* 深海蓝半透明底色 */
     }
     .photo-placeholder.has-image .photo-placeholder__img {
       display: block;
@@ -389,7 +384,7 @@
       }
 
       .photo-grid {
-        grid-template-columns: 1fr;  /* 移动端单列 */
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));  /* 移动端自适应 */
       }
 
       .photo-placeholder {
@@ -399,6 +394,22 @@
       .contact-section__links {
         flex-direction: column;
         align-items: center;
+      }
+    }
+
+
+    /* ========== 平板断点：768px ========== */
+    @media (max-width: 768px) and (min-width: 641px) {
+      .photo-grid {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      .photo-section__content {
+        padding: 6rem 2rem 4rem;
+      }
+
+      .photo-section__title {
+        font-size: clamp(1.6rem, 4vw, 2.2rem);
       }
     }
 
