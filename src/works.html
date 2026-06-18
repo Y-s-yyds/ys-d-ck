@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<!-- ====================================================================
+     作品目录页 — 独立跳转页面
+     从首页导航栏「作品」或第二屏 CTA 按钮进入
+     页面结构：
+       - 顶部粘性导航条（品牌名 + 返回首页按钮）
+       - 主体：卡片网格（4 张卡片）
+       - 底部：版权 + 返回首页
+     卡片说明：
+       卡片1 硬件工程计算器 — 可点击跳转 hardware-calculator.html
+       卡片2-4 预留占位（航拍作品集 / 技术博客 / 开源项目）
+     配色：与首页统一 深海蓝 #0f243b / 暖橙 #ff782e
+     ==================================================================== -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>作品 — 工程师 · 探索者</title>
+
+  <!-- ===== 字体引入：与首页一致 ===== -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ========== 全局重置 ========== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* body 基础：深海蓝底 + 白色文字 */
+    body {
+      width: 100%;
+      min-height: 100vh;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background: #0f243b;
+      color: #ffffff;
+    }
+
+    /* ========== 设计令牌（与首页统一）========== */
+    :root {
+      --color-deep-blue: #0f243b;
+      --color-warm-orange: #ff782e;
+      --color-white: #ffffff;
+      --color-muted: rgba(255, 255, 255, 0.45);
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    /* ========== 顶部粘性导航条 ==========
+       sticky 固定在顶部，滚动时保持可见 */
+    .page-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem clamp(1.5rem, 4vw, 4rem);
+      background: rgba(15, 36, 59, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    /* 品牌名：与首页主标题一致 */
+    .page-nav__brand {
+      font-weight: 800;
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      color: var(--color-white);
+      text-decoration: none;
+    }
+    .page-nav__brand .dot {
+      color: var(--color-warm-orange);
+      margin: 0 0.1em;
+    }
+
+    /* 返回首页按钮：描边样式 */
+    .page-nav__back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1.2rem;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: var(--color-white);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      transition: all 0.25s ease;
+    }
+    .page-nav__back:hover {
+      border-color: var(--color-warm-orange);
+      background: rgba(255, 120, 46, 0.1);
+      color: var(--color-warm-orange);
+    }
+    .page-nav__back svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    /* ========== 页面主体 ========== */
+    .works-page {
+      max-width: 88rem;
+      margin: 0 auto;
+      padding: 4rem clamp(2rem, 6vw, 6rem) 6rem;
+    }
+
+    /* 标题区 */
+    .works-page__header {
+      margin-bottom: 3.5rem;
+    }
+
+    /* 区块序号标签 */
+    .works-page__label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      color: var(--color-warm-orange);
+      margin-bottom: 1.5rem;
+    }
+    .works-page__label::before {
+      content: '';
+      display: block;
+      width: 2.5rem;
+      height: 1.5px;
+      background: var(--color-warm-orange);
+    }
+
+    /* 大标题 */
+    .works-page__title {
+      font-weight: 800;
+      font-size: clamp(2rem, 4.5vw, 3.2rem);
+      line-height: 1.15;
+      color: var(--color-white);
+      letter-spacing: 0.04em;
+    }
+    .works-page__title-accent {
+      color: var(--color-warm-orange);
+    }
+
+    /* 描述文字 */
+    .works-page__desc {
+      font-weight: 300;
+      font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+      line-height: 1.7;
+      color: var(--color-muted);
+      margin-top: 1rem;
+      max-width: 44rem;
+      letter-spacing: 0.01em;
+    }
+
+    /* ========== 卡片网格 ==========
+       auto-fill + minmax：自动响应列数
+       每列最小 280px，空间够时自动放多列 */
+    .works-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    /* 单个卡片 */
+    .work-card {
+      position: relative;
+      background: rgba(255, 255, 255, 0.04);    /* 极淡白色底 */
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 2rem 1.8rem 1.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.3s var(--ease-out-quart),
+                  background 0.3s ease,
+                  border-color 0.3s ease,
+                  box-shadow 0.3s ease;
+      overflow: hidden;
+    }
+
+    /* 卡片悬停光晕：渐变叠加层 */
+    .work-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(255,120,46,0.08) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* 悬停效果：微抬 + 光晕 + 暖橙边框 */
+    .work-card:hover {
+      transform: translateY(-5px);
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 120, 46, 0.25);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    }
+    .work-card:hover::before { opacity: 1; }
+
+    .work-card > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 卡片图标容器 */
+    .work-card__icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .work-card__icon svg {
+      width: 26px;
+      height: 26px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    /* 图标颜色变体（4 种） */
+    .work-card__icon--orange { background: rgba(255, 120, 46, 0.14); color: #ff782e; }
+    .work-card__icon--blue   { background: rgba(59, 130, 246, 0.14); color: #60a5fa; }
+    .work-card__icon--green  { background: rgba(16, 185, 129, 0.14); color: #34d399; }
+    .work-card__icon--purple { background: rgba(168, 85, 247, 0.14); color: #c084fc; }
+
+    /* 卡片标题 */
+    .work-card__title {
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--color-white);
+      line-height: 1.35;
+    }
+
+    /* 卡片描述 */
+    .work-card__desc {
+      font-weight: 300;
+      font-size: 0.9rem;
+      color: var(--color-muted);
+      line-height: 1.65;
+      flex: 1;
+    }
+
+    /* 卡片标签：药丸形 */
+    .work-card__tag {
+      display: inline-flex;
+      align-self: flex-start;
+      padding: 0.28rem 0.8rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    .work-card__tag--orange {
+      background: rgba(255, 120, 46, 0.1);
+      color: var(--color-warm-orange);
+      border-color: rgba(255, 120, 46, 0.15);
+    }
+
+    /* 卡片底部操作行（悬停显示） */
+    .work-card__action {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.3rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--color-warm-orange);
+      letter-spacing: 0.03em;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.25s ease, transform 0.25s var(--ease-out-quart);
+    }
+    .work-card:hover .work-card__action {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .work-card__action svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      fill: none;
+      transition: transform 0.25s var(--ease-out-quart);
+    }
+    .work-card:hover .work-card__action svg {
+      transform: translateX(4px);    /* 悬停箭头右移 */
+    }
+
+    /* 右上角箭头装饰（悬停显示） */
+    .work-card__arrow {
+      position: absolute;
+      top: 1.4rem;
+      right: 1.4rem;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(255, 120, 46, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: translateX(-6px);
+      transition: opacity 0.25s ease, transform 0.25s var(--ease-out-quart);
+      z-index: 2;
+    }
+    .work-card:hover .work-card__arrow {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .work-card__arrow svg {
+      width: 14px;
+      height: 14px;
+      stroke: var(--color-warm-orange);
+      stroke-width: 2.2;
+      fill: none;
+    }
+
+    /* ========== 底部返回栏 ========== */
+    .works-footer {
+      margin-top: 4rem;
+      padding-top: 2.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .works-footer__text {
+      font-size: 0.82rem;
+      font-weight: 300;
+      color: rgba(255, 255, 255, 0.3);
+      letter-spacing: 0.04em;
+    }
+    .works-footer__home {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.5rem;
+      background: rgba(255, 120, 46, 0.12);
+      border: 1px solid rgba(255, 120, 46, 0.2);
+      border-radius: 6px;
+      color: var(--color-warm-orange);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      transition: all 0.25s ease;
+    }
+    .works-footer__home:hover {
+      background: var(--color-warm-orange);
+      color: var(--color-white);
+    }
+    .works-footer__home svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    /* ========== 响应式：移动端 ========== */
+    @media (max-width: 768px) {
+      .works-page { padding: 3rem 1.5rem 4rem; }
+      .works-grid { grid-template-columns: 1fr; }    /* 单列 */
+      .works-footer {
+        flex-direction: column;
+        gap: 1.2rem;
+        text-align: center;
+      }
+      /* 移动端直接显示操作行（无悬停） */
+      .work-card__action {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ========== 入场动画 ========== */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(30px);
+      animation: fadeInUp 0.7s var(--ease-out-expo) forwards;
+    }
+    .fade-in-d1 { animation-delay: 0.1s; }
+    .fade-in-d2 { animation-delay: 0.2s; }
+    .fade-in-d3 { animation-delay: 0.3s; }
+    .fade-in-d4 { animation-delay: 0.4s; }
+
+    @keyframes fadeInUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 无障碍：尊重减少动效偏好 */
+    @media (prefers-reduced-motion: reduce) {
+      .fade-in {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ====== 顶部粘性导航条 ====== -->
+  <nav class="page-nav">
+    <!-- 品牌名：点击回首页 -->
+    <a class="page-nav__brand" href="index.html">工程师<span class="dot">·</span>探索者</a>
+    <!-- 返回首页按钮 -->
+    <a class="page-nav__back" href="index.html">
+      <svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12" stroke-linecap="round"/><polyline points="12 19 5 12 12 5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      返回首页
+    </a>
+  </nav>
+
+  <!-- ====== 作品列表主体 ====== -->
+  <main class="works-page">
+    <!-- 标题区 -->
+    <header class="works-page__header fade-in">
+      <span class="works-page__label">03 — Works</span>
+      <h1 class="works-page__title">
+        精选
+        <span class="works-page__title-accent">作品</span>
+      </h1>
+      <p class="works-page__desc">
+        从硬件工具到航拍影像，这里汇集了我在工程实践和探索旅途中的成果。
+      </p>
+    </header>
+
+    <!-- 卡片网格 -->
+    <div class="works-grid">
+
+      <!-- 卡片1：硬件工程计算器（可点击跳转） -->
+      <a class="work-card fade-in fade-in-d1" href="hardware-calculator.html" target="_blank" rel="noopener">
+        <!-- 右上角箭头装饰 -->
+        <div class="work-card__arrow">
+          <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round"/><polyline points="12 5 19 12 12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <!-- 图标：暖橙 -->
+        <div class="work-card__icon work-card__icon--orange">
+          <svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
+        </div>
+        <!-- 标题 -->
+        <div class="work-card__title">硬件工程计算器</div>
+        <!-- 描述 -->
+        <div class="work-card__desc">输入即算 · 单位切换 · E24/E96 电阻自动推荐 · 欧姆定律 / 功率 / 分压全类别覆盖</div>
+        <!-- 标签 -->
+        <span class="work-card__tag work-card__tag--orange">在线工具</span>
+        <!-- 底部操作行 -->
+        <div class="work-card__action">
+          打开计算器
+          <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round"/><polyline points="12 5 19 12 12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </a>
+
+      <!-- 卡片2：航拍作品集（预留占位） -->
+      <div class="work-card fade-in fade-in-d2">
+        <div class="work-card__arrow">
+          <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round"/><polyline points="12 5 19 12 12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <!-- 图标：蓝色 -->
+        <div class="work-card__icon work-card__icon--blue">
+          <svg viewBox="0 0 24 24"><path d="M23 19a10 10 0 01-23 0"/><path d="M18 11V5a2 2 0 00-4 0v5"/><path d="M14 11V7a2 2 0 00-4 0v4"/></svg>
+        </div>
+        <div class="work-card__title">航拍作品集</div>
+        <div class="work-card__desc">从高空俯瞰大地，用无人机记录旅途中的壮丽瞬间——山川、城市、海岸线。</div>
+        <span class="work-card__tag">摄影</span>
+        <div class="work-card__action">
+          敬请期待
+          <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round"/><polyline points="12 5 19 12 12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <!-- 卡片3：技术博客（预留占位） -->
+      <div class="work-card fade-in fade-in-d3">
+        <div class="work-card__arrow">
+          <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round"/><polyline points="12 5 19 12 12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <!-- 图标：绿色 -->
+        <div class="work-card__icon work-card__icon--green">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>
+        </div>
+        <div class="work-card__title">技术博客</div>
+        <div class="work-card__desc">PCB 设计心得、硬件调试经验、信号完整性分析——工程实践的总结与分享。</div>
+        <span class="work-card__tag">文章</span>
+        <div class="work-card__action">
+          敬请期待
+          <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round"/><polyline points="12 5 19 12 12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <!-- 卡片4：开源项目（预留占位） -->
+      <div class="work-card fade-in fade-in-d4">
+        <div class="work-card__arrow">
+          <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round"/><polyline points="12 5 19 12 12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <!-- 图标：紫色 -->
+        <div class="work-card__icon work-card__icon--purple">
+          <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
+        </div>
+        <div class="work-card__title">开源项目</div>
+        <div class="work-card__desc">硬件相关的开源设计文件、脚本工具、以及实用的小型工程辅助项目。</div>
+        <span class="work-card__tag">代码</span>
+        <div class="work-card__action">
+          敬请期待
+          <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round"/><polyline points="12 5 19 12 12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 底部：版权 + 返回首页 -->
+    <footer class="works-footer">
+      <span class="works-footer__text">© 2024 工程师 · 探索者</span>
+      <a class="works-footer__home" href="index.html">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        返回首页
+      </a>
+    </footer>
+  </main>
+
+</body>
+</html>

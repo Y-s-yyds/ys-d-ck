@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<!-- ====================================================================
+     简历页 — 独立页面
+     从首页导航栏「简历」进入
+     页面结构：
+       - 顶部粘性导航条（品牌名 + 返回首页按钮）
+       - 主体：简历内容（个人信息 / 教育背景 / 工作经历 / 技能清单 / 项目经历）
+       - 底部：版权 + 返回首页
+     配色：与首页统一 深海蓝 #0f243b / 暖橙 #ff782e
+     ==================================================================== -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>简历 — 工程师 · 探索者</title>
+
+  <!-- ===== 字体引入：与首页一致 ===== -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ========== 全局重置 ========== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* body 基础：深海蓝底 + 白色文字 */
+    body {
+      width: 100%;
+      min-height: 100vh;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: #0f243b;
+      color: #ffffff;
+      line-height: 1.6;
+    }
+
+    /* ========== 设计令牌（与首页统一）========== */
+    :root {
+      --color-deep-blue: #0f243b;
+      --color-warm-orange: #ff782e;
+      --color-white: #ffffff;
+      --color-muted: rgba(255, 255, 255, 0.45);
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    /* ========== 顶部粘性导航条 ==========
+       sticky 固定在顶部，滚动时保持可见 */
+    .page-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem clamp(1.5rem, 4vw, 4rem);
+      background: rgba(15, 36, 59, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    /* 品牌名：与首页主标题一致 */
+    .page-nav__brand {
+      font-weight: 800;
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      color: var(--color-white);
+      text-decoration: none;
+    }
+    .page-nav__brand .dot {
+      color: var(--color-warm-orange);
+      margin: 0 0.1em;
+    }
+
+    /* 返回首页按钮：描边样式 */
+    .page-nav__back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1.2rem;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: var(--color-white);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      transition: all 0.25s ease;
+    }
+    .page-nav__back:hover {
+      border-color: var(--color-warm-orange);
+      background: rgba(255, 120, 46, 0.1);
+      color: var(--color-warm-orange);
+    }
+    .page-nav__back svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    /* ========== 页面主体 ========== */
+    .resume-page {
+      max-width: 88rem;
+      margin: 0 auto;
+      padding: 4rem clamp(2rem, 6vw, 6rem) 6rem;
+    }
+
+    /* 标题区 */
+    .resume-page__header {
+      margin-bottom: 3.5rem;
+    }
+
+    /* 区块序号标签 */
+    .resume-page__label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      color: var(--color-warm-orange);
+      margin-bottom: 1.5rem;
+    }
+    .resume-page__label::before {
+      content: '';
+      display: block;
+      width: 2.5rem;
+      height: 1.5px;
+      background: var(--color-warm-orange);
+    }
+
+    /* 大标题 */
+    .resume-page__title {
+      font-weight: 800;
+      font-size: clamp(2rem, 4.5vw, 3.2rem);
+      line-height: 1.15;
+      color: var(--color-white);
+      letter-spacing: 0.04em;
+    }
+    .resume-page__title-accent {
+      color: var(--color-warm-orange);
+    }
+
+    /* 描述文字 */
+    .resume-page__desc {
+      font-weight: 300;
+      font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+      line-height: 1.7;
+      color: var(--color-muted);
+      margin-top: 1rem;
+      max-width: 44rem;
+      letter-spacing: 0.01em;
+    }
+
+    /* ========== 简历内容区 ========== */
+    .resume-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+      margin-top: 3rem;
+    }
+
+    /* 左侧栏 */
+    .resume-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+
+    /* 右侧主内容 */
+    .resume-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+
+    /* 简历卡片 */
+    .resume-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 2rem;
+      transition: all 0.3s ease;
+    }
+    .resume-card:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 120, 46, 0.25);
+    }
+
+    /* 卡片标题 */
+    .resume-card__title {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--color-warm-orange);
+      margin-bottom: 1.2rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid rgba(255, 120, 46, 0.2);
+    }
+
+    /* 个人信息 */
+    .resume-profile__name {
+      font-weight: 800;
+      font-size: 1.8rem;
+      color: var(--color-white);
+      margin-bottom: 0.5rem;
+    }
+    .resume-profile__title {
+      font-weight: 300;
+      font-size: 1rem;
+      color: var(--color-muted);
+      margin-bottom: 1.5rem;
+    }
+    .resume-profile__contact {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      font-size: 0.9rem;
+      color: var(--color-muted);
+    }
+    .resume-profile__contact-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .resume-profile__contact-item svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--color-warm-orange);
+      stroke-width: 2;
+      fill: none;
+      flex-shrink: 0;
+    }
+
+    /* 技能标签 */
+    .resume-skills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+    .resume-skill-tag {
+      display: inline-flex;
+      padding: 0.4rem 1rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      background: rgba(255, 120, 46, 0.1);
+      color: var(--color-warm-orange);
+      border: 1px solid rgba(255, 120, 46, 0.15);
+    }
+
+    /* 时间线项目 */
+    .timeline-item {
+      position: relative;
+      padding-left: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .timeline-item:last-child {
+      margin-bottom: 0;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0.45rem;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-warm-orange);
+    }
+    .timeline-item::after {
+      content: '';
+      position: absolute;
+      left: 3.5px;
+      top: 1.2rem;
+      width: 1px;
+      height: calc(100% + 0.5rem);
+      background: rgba(255, 120, 46, 0.2);
+    }
+    .timeline-item:last-child::after {
+      display: none;
+    }
+    .timeline-item__date {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--color-warm-orange);
+      letter-spacing: 0.04em;
+      margin-bottom: 0.3rem;
+    }
+    .timeline-item__title {
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--color-white);
+      margin-bottom: 0.2rem;
+    }
+    .timeline-item__subtitle {
+      font-weight: 300;
+      font-size: 0.88rem;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    .timeline-item__desc {
+      font-weight: 300;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.6);
+      line-height: 1.6;
+    }
+
+    /* 项目卡片 */
+    .resume-project {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      transition: all 0.3s ease;
+    }
+    .resume-project:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 120, 46, 0.2);
+    }
+    .resume-project__title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--color-white);
+      margin-bottom: 0.3rem;
+    }
+    .resume-project__desc {
+      font-weight: 300;
+      font-size: 0.85rem;
+      color: var(--color-muted);
+      line-height: 1.6;
+    }
+
+    /* 下载按钮 */
+    .resume-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.8rem 1.8rem;
+      background: rgba(255, 120, 46, 0.12);
+      border: 1px solid rgba(255, 120, 46, 0.2);
+      border-radius: 6px;
+      color: var(--color-warm-orange);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      transition: all 0.25s ease;
+      margin-top: 1rem;
+    }
+    .resume-download:hover {
+      background: var(--color-warm-orange);
+      color: var(--color-white);
+    }
+    .resume-download svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    /* ========== 底部返回栏 ========== */
+    .resume-footer {
+      margin-top: 4rem;
+      padding-top: 2.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .resume-footer__text {
+      font-size: 0.82rem;
+      font-weight: 300;
+      color: rgba(255, 255, 255, 0.3);
+      letter-spacing: 0.04em;
+    }
+    .resume-footer__home {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.5rem;
+      background: rgba(255, 120, 46, 0.12);
+      border: 1px solid rgba(255, 120, 46, 0.2);
+      border-radius: 6px;
+      color: var(--color-warm-orange);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      transition: all 0.25s ease;
+    }
+    .resume-footer__home:hover {
+      background: var(--color-warm-orange);
+      color: var(--color-white);
+    }
+    .resume-footer__home svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    /* ========== 响应式：移动端 ========== */
+    @media (max-width: 768px) {
+      .resume-page { padding: 3rem 1.5rem 4rem; }
+      .resume-content {
+        grid-template-columns: 1fr;
+      }
+      .resume-footer {
+        flex-direction: column;
+        gap: 1.2rem;
+        text-align: center;
+      }
+    }
+
+    /* ========== 入场动画 ========== */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(30px);
+      animation: fadeInUp 0.7s var(--ease-out-expo) forwards;
+    }
+    .fade-in-d1 { animation-delay: 0.1s; }
+    .fade-in-d2 { animation-delay: 0.2s; }
+    .fade-in-d3 { animation-delay: 0.3s; }
+    .fade-in-d4 { animation-delay: 0.4s; }
+
+    @keyframes fadeInUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 无障碍：尊重减少动效偏好 */
+    @media (prefers-reduced-motion: reduce) {
+      .fade-in {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ====== 顶部粘性导航条 ====== -->
+  <nav class="page-nav">
+    <!-- 品牌名：点击回首页 -->
+    <a class="page-nav__brand" href="index.html">工程师<span class="dot">·</span>探索者</a>
+    <!-- 返回首页按钮 -->
+    <a class="page-nav__back" href="index.html">
+      <svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12" stroke-linecap="round"/><polyline points="12 19 5 12 12 5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      返回首页
+    </a>
+  </nav>
+
+  <!-- ====== 简历主体 ====== -->
+  <main class="resume-page">
+    <!-- 标题区 -->
+    <header class="resume-page__header fade-in">
+      <span class="resume-page__label">04 — 简历</span>
+      <h1 class="resume-page__title">
+        个人
+        <span class="resume-page__title-accent">简历</span>
+      </h1>
+      <p class="resume-page__desc">
+        PCB硬件工程师 · 航拍摄影师 · 技术探索者
+      </p>
+      <!-- 下载PDF按钮（待填入PDF文件路径） -->
+      <a class="resume-download" href="#" title="请替换为你的简历PDF文件">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        下载简历 PDF
+      </a>
+    </header>
+
+    <!-- 简历内容：双栏布局 -->
+    <div class="resume-content">
+
+      <!-- 左侧栏 -->
+      <aside class="resume-sidebar">
+
+        <!-- 个人信息卡片 -->
+        <div class="resume-card fade-in fade-in-d1">
+          <h2 class="resume-card__title">个人信息</h2>
+          <div class="resume-profile__name">你的名字</div>
+          <div class="resume-profile__title">PCB硬件工程师</div>
+          <div class="resume-profile__contact">
+            <div class="resume-profile__contact-item">
+              <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22 4 12 13 2 4"/></svg>
+              <span>1400548734@qq.com</span>
+            </div>
+            <div class="resume-profile__contact-item">
+              <svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7A6 6 0 018 8z"/><rect x="2" y="9" width="4" height="12"/><rect x="18" y="9" width="4" height="12"/></svg>
+              <span>微信：YSD20010113</span>
+            </div>
+            <div class="resume-profile__contact-item">
+              <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span>你所在的城市</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 技能清单卡片 -->
+        <div class="resume-card fade-in fade-in-d2">
+          <h2 class="resume-card__title">技能清单</h2>
+          <div class="resume-skills">
+            <span class="resume-skill-tag">PCB设计</span>
+            <span class="resume-skill-tag">Altium Designer</span>
+            <span class="resume-skill-tag">信号完整性</span>
+            <span class="resume-skill-tag">硬件调试</span>
+            <span class="resume-skill-tag">电路设计</span>
+            <span class="resume-skill-tag">EMC/EMI</span>
+            <span class="resume-skill-tag">航拍摄影</span>
+            <span class="resume-skill-tag">无人机操作</span>
+            <span class="resume-skill-tag">Python</span>
+            <span class="resume-skill-tag">硬件计算器开发</span>
+          </div>
+        </div>
+
+        <!-- 教育背景卡片 -->
+        <div class="resume-card fade-in fade-in-d3">
+          <h2 class="resume-card__title">教育背景</h2>
+          <div class="timeline-item">
+            <div class="timeline-item__date">20XX - 20XX</div>
+            <div class="timeline-item__title">你的学校名称</div>
+            <div class="timeline-item__subtitle">本科专业 · 学历层次</div>
+            <div class="timeline-item__desc">
+              待补充：主修课程、在校荣誉、相关经历等
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- 右侧主内容 -->
+      <div class="resume-main">
+
+        <!-- 工作经历卡片 -->
+        <div class="resume-card fade-in fade-in-d2">
+          <h2 class="resume-card__title">工作经历</h2>
+          <div class="timeline-item">
+            <div class="timeline-item__date">20XX - 至今</div>
+            <div class="timeline-item__title">公司名称</div>
+            <div class="timeline-item__subtitle">PCB硬件工程师</div>
+            <div class="timeline-item__desc">
+              待补充：主要工作内容、负责项目、技术成果等
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-item__date">20XX - 20XX</div>
+            <div class="timeline-item__title">上一家公司名称</div>
+            <div class="timeline-item__subtitle">职位名称</div>
+            <div class="timeline-item__desc">
+              待补充：工作职责、项目经历、收获成果等
+            </div>
+          </div>
+        </div>
+
+        <!-- 项目经历卡片 -->
+        <div class="resume-card fade-in fade-in-d3">
+          <h2 class="resume-card__title">项目经历</h2>
+          <div class="resume-project">
+            <div class="resume-project__title">硬件工程计算器开发</div>
+            <div class="resume-project__desc">
+              独立开发在线硬件计算工具，支持欧姆定律、功率计算、分压计算、E24/E96电阻推荐等功能，提升硬件工程师工作效率。
+            </div>
+          </div>
+          <div class="resume-project">
+            <div class="resume-project__title">待补充项目名称</div>
+            <div class="resume-project__desc">
+              待补充：项目描述、技术难点、解决方案、成果展示等
+            </div>
+          </div>
+        </div>
+
+        <!-- 自我评价卡片 -->
+        <div class="resume-card fade-in fade-in-d4">
+          <h2 class="resume-card__title">自我评价</h2>
+          <div class="timeline-item__desc">
+            待补充：个人特点、职业优势、发展方向等
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 底部：版权 + 返回首页 -->
+    <footer class="resume-footer">
+      <span class="resume-footer__text">© 2026 工程师 · 探索者 — PCB硬件工程师</span>
+      <a class="resume-footer__home" href="index.html">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        返回首页
+      </a>
+    </footer>
+  </main>
+
+</body>
+</html>

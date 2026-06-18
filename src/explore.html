@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<!-- ====================================================================
+     探索页 — 照片展示图库
+     页面结构：固定返回按钮 + 五大分类板块 + 底部联系区
+       第一板块：日常（生活人像）
+       第二板块：兄弟（同行纪实）
+       第三板块：名山（风景摄影）
+       第四板块：足迹（城市人文）
+       第五板块：花草（自然之美）
+       底部：联系区域（复刻首页第四屏）
+     配色：深海蓝 #0f243b / 暖橙 #ff782e / 白 #ffffff
+     字体：Inter (Google Fonts)，备用 system-ui
+     交互：滚动淡入、图片hover放大、按钮hover高亮、锚点平滑滚动
+     ==================================================================== -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>探索 — 工程师 · 探索者</title>
+
+  <!-- ===== 字体引入：Inter 300/600/800 三种粗细（与首页一致）===== -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ========== 全局重置 ========== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* 平滑滚动：点击锚点时动画过渡 */
+    html {
+      scroll-behavior: smooth;
+    }
+
+    /* body 基础：全宽 + Inter 字体 + 深海蓝底色 */
+    body {
+      width: 100%;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: #0f243b;
+      color: #ffffff;
+      overflow-x: hidden;
+    }
+
+    /* ========== 设计令牌（与首页统一）========== */
+    :root {
+      --color-deep-blue: #0f243b;
+      --color-warm-orange: #ff782e;
+      --color-white: #ffffff;
+      --color-muted: rgba(255, 255, 255, 0.45);
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    /* ========== 滚动入场动画（与首页一致）========== */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.8s var(--ease-out-expo),
+                  transform 0.8s var(--ease-out-expo);
+    }
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.22s; }
+    .reveal-delay-3 { transition-delay: 0.36s; }
+    .reveal-delay-4 { transition-delay: 0.5s; }
+
+    /* ========== 固定返回按钮 ==========
+       左上角固定定位，始终可见 */
+    .back-btn {
+      position: fixed;
+      top: 1.2rem;
+      left: 1.2rem;
+      z-index: 1000;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      background: rgba(15, 36, 59, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      color: var(--color-white);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      transition: border-color 0.25s ease,
+                  background 0.25s ease,
+                  color 0.25s ease;
+    }
+    .back-btn:hover {
+      border-color: var(--color-warm-orange);
+      background: rgba(255, 120, 46, 0.12);
+      color: var(--color-warm-orange);
+    }
+    .back-btn svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    /* ========== 分类板块通用样式 ========== */
+    .photo-section {
+      position: relative;
+      width: 100vw;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    /* 板块交替背景：深蓝 / 稍浅深蓝 */
+    .photo-section--dark {
+      background: #0f243b;
+    }
+    .photo-section--alt {
+      background: #142d47;
+    }
+
+    /* 板块内容容器 */
+    .photo-section__content {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 88rem;
+      margin: 0 auto;
+      padding: 6rem clamp(2rem, 6vw, 6rem);
+    }
+
+    /* 区块序号标签（与首页 Explore 标签风格一致） */
+    .photo-section__label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      color: var(--color-warm-orange);
+      margin-bottom: 2rem;
+    }
+    .photo-section__label::before {
+      content: '';
+      display: block;
+      width: 2.5rem;
+      height: 1.5px;
+      background: var(--color-warm-orange);
+    }
+
+    /* 板块大标题 */
+    .photo-section__title {
+      font-weight: 800;
+      font-size: clamp(2rem, 4.5vw, 3.2rem);
+      line-height: 1.15;
+      color: var(--color-white);
+      letter-spacing: 0.04em;
+      margin-bottom: 1rem;
+    }
+    .photo-section__title-accent {
+      color: var(--color-warm-orange);
+    }
+
+    /* 板块描述文字 */
+    .photo-section__desc {
+      font-weight: 300;
+      font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+      line-height: 1.7;
+      color: var(--color-muted);
+      margin-bottom: 3rem;
+      max-width: 44rem;
+      letter-spacing: 0.01em;
+    }
+
+    /* ========== 图片网格 ==========
+       auto-fit：自动响应列数，空间不够时自动减少列
+       每列最小 280px */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    /* 单个图片占位框：无图时固定4:3，有图时自适应 */
+    .photo-placeholder {
+      position: relative;
+      aspect-ratio: 4 / 3;            /* 默认固定比例（无图占位框） */
+      border: 1.5px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.35s var(--ease-out-quart),
+                  border-color 0.3s ease,
+                  box-shadow 0.3s ease;
+    }
+
+    /* 有图片时：取消固定宽高比，让容器跟随图片自然尺寸 */
+    .photo-placeholder.has-image {
+      aspect-ratio: auto;
+    }
+
+    /* 图片占位框悬停效果：轻微放大 + 暖橙边框光晕 */
+    .photo-placeholder:hover {
+      transform: scale(1.03);
+      border-color: rgba(255, 120, 46, 0.35);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    /* 占位框内的序号标签 */
+    .photo-placeholder__number {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-weight: 800;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      color: rgba(255, 255, 255, 0.08);
+      letter-spacing: 0.04em;
+      pointer-events: none;
+      transition: color 0.3s ease;
+    }
+    .photo-placeholder:hover .photo-placeholder__number {
+      color: rgba(255, 120, 46, 0.15);
+    }
+
+    /* 占位框内的提示文字 */
+    .photo-placeholder__hint {
+      position: absolute;
+      bottom: 0.8rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.72rem;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.25);
+      letter-spacing: 0.06em;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    /* 当占位框内有真实图片时，用此类覆盖 */
+    .photo-placeholder__img {
+      width: 100%;
+      height: auto;                /* 高度由图片自身决定，驱动容器 */
+      display: none;               /* 默认隐藏，放入图片后改为 display:block */
+    }
+
+    /* 有图片时：显示图片、隐藏序号和提示、加暗色背景防留白突兀 */
+    .photo-placeholder.has-image {
+      border-style: solid;
+      border-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(15, 36, 59, 0.5);   /* 深海蓝半透明底色 */
+    }
+    .photo-placeholder.has-image .photo-placeholder__img {
+      display: block;
+    }
+    .photo-placeholder.has-image .photo-placeholder__number,
+    .photo-placeholder.has-image .photo-placeholder__hint {
+      display: none;
+    }
+
+    /* ========== 底部联系区域（完全复刻首页第四屏）========== */
+    .contact-section {
+      position: relative;
+      width: 100vw;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: url('../assets/images/contact-bg.jpg') center / cover no-repeat;
+    }
+
+    /* 彩虹背景较亮，加暗色遮罩保证白字可读 */
+    .contact-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 36, 59, 0.68);
+      z-index: 1;
+    }
+
+    .contact-section__content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding: 0 clamp(2rem, 6vw, 8rem);
+      max-width: 56rem;
+    }
+
+    .contact-section__label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      color: var(--color-warm-orange);
+      margin-bottom: 2.5rem;
+    }
+    .contact-section__label::before {
+      content: '';
+      display: block;
+      width: 2.5rem;
+      height: 1.5px;
+      background: var(--color-warm-orange);
+    }
+
+    .contact-section__title {
+      font-weight: 800;
+      font-size: clamp(2.4rem, 5.5vw, 4.2rem);
+      line-height: 1.15;
+      color: var(--color-white);
+      letter-spacing: 0.04em;
+      margin-bottom: 1.5rem;
+    }
+
+    .contact-section__desc {
+      font-weight: 300;
+      font-size: clamp(1rem, 1.8vw, 1.2rem);
+      line-height: 1.75;
+      color: var(--color-muted);
+      margin-bottom: 3rem;
+    }
+
+    .contact-section__links {
+      display: flex;
+      justify-content: center;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+    }
+
+    .contact-section__link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.8rem 1.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: var(--color-white);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      transition: border-color 0.25s ease,
+                  background 0.25s ease,
+                  color 0.25s ease;
+    }
+    .contact-section__link:hover {
+      border-color: var(--color-warm-orange);
+      background: rgba(255, 120, 46, 0.1);
+      color: var(--color-warm-orange);
+    }
+    .contact-section__link svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .contact-section__footer {
+      margin-top: 4rem;
+      font-size: 0.75rem;
+      font-weight: 300;
+      color: rgba(255, 255, 255, 0.25);
+      letter-spacing: 0.06em;
+    }
+
+    /* ========== 响应式：移动端 ========== */
+    @media (max-width: 768px) {
+      .back-btn {
+        top: 0.8rem;
+        left: 0.8rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.78rem;
+      }
+
+      .photo-section__content {
+        padding: 5rem 1.5rem 3rem;
+      }
+
+      .photo-grid {
+        grid-template-columns: 1fr;  /* 移动端单列 */
+      }
+
+      .photo-placeholder {
+        /* 继承桌面端：有图自适应、无图4:3 */
+      }
+
+      .contact-section__links {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    /* ========== 无障碍：尊重减少动效偏好 ========== */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+      }
+
+      .photo-placeholder {
+        transition: none;
+      }
+    }
+
+    /* 键盘焦点样式 */
+    .back-btn:focus-visible,
+    .contact-section__link:focus-visible {
+      outline: 2px solid var(--color-warm-orange);
+      outline-offset: 3px;
+    }
+    /* 微信二维码弹窗（探索页专用） */
+    .qr-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,36,59,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .qr-modal-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .qr-modal-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 1.5rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+      max-width: min(320px, 80vw);
+    }
+    .qr-modal-overlay.show .qr-modal-box {
+      transform: scale(1);
+    }
+    .qr-modal-box img {
+      width: 260px;
+      max-width: 100%;
+      border-radius: 10px;
+      display: block;
+    }
+    .qr-modal-text {
+      margin-top: 0.9rem;
+      font-size: 0.88rem;
+      color: #555;
+      letter-spacing: 0.04em;
+    }
+    .qr-modal-close {
+      position: fixed;
+      top: 1rem;
+      right: 1.5rem;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1.3rem;
+      line-height: 1;
+      transition: background 0.2s;
+      z-index: 100000;
+    }
+    .qr-modal-close:hover {
+      background: rgba(255,120,46,0.6);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ====== 固定返回首页按钮（左上角）====== -->
+  <a class="back-btn" href="index.html" aria-label="返回首页">
+    <svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12" stroke-linecap="round"/><polyline points="12 19 5 12 12 5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    返回首页
+  </a>
+
+  <!-- ====== 第一板块：日常 — 生活人像 ====== -->
+  <section class="photo-section photo-section--dark" id="daily" aria-label="日常">
+    <div class="photo-section__content">
+      <span class="photo-section__label reveal reveal-delay-1">01 — 日常</span>
+
+      <h2 class="photo-section__title reveal reveal-delay-2">
+        日常
+        <span class="photo-section__title-accent">生活人像</span>
+      </h2>
+
+      <p class="photo-section__desc reveal reveal-delay-3">
+走进镜头里的自己，每一张照片都是生活里真实的片段。不设脚本，不做摆拍，记录最自然的自己。
+      </p>
+
+      <div class="photo-grid reveal reveal-delay-4">
+        <div class="photo-placeholder has-image" title="徒步 · 山野自拍">
+          <img class="photo-placeholder__img" src="../assets/images/selfies/selfie-hiking.jpg" alt="徒步山野自拍" loading="lazy">
+          <span class="photo-placeholder__number">01</span>
+          <span class="photo-placeholder__hint">山野自拍</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="夕阳 · 侧脸剪影">
+          <img class="photo-placeholder__img" src="../assets/images/selfies/selfie-sunset.jpg" alt="夕阳侧脸剪影" loading="lazy">
+          <span class="photo-placeholder__number">02</span>
+          <span class="photo-placeholder__hint">夕阳剪影</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="日常 · 休闲瞬间">
+          <img class="photo-placeholder__img" src="../assets/images/selfies/selfie-casual.jpg" alt="休闲日常人像" loading="lazy">
+          <span class="photo-placeholder__number">03</span>
+          <span class="photo-placeholder__hint">日常休闲</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="笑容 · 阳光明媚">
+          <img class="photo-placeholder__img" src="../assets/images/selfies/selfie-smile.jpg" alt="笑容特写人像" loading="lazy">
+          <span class="photo-placeholder__number">04</span>
+          <span class="photo-placeholder__hint">笑容特写</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== 第二板块：兄弟 — 同行纪实 ====== -->
+  <section class="photo-section photo-section--alt" id="brothers" aria-label="兄弟">
+    <div class="photo-section__content">
+      <span class="photo-section__label reveal reveal-delay-1">02 — 兄弟</span>
+
+      <h2 class="photo-section__title reveal reveal-delay-2">
+        兄弟
+        <span class="photo-section__title-accent">同行纪实</span>
+      </h2>
+
+      <p class="photo-section__desc reveal reveal-delay-3">
+        一路同行的伙伴，镜头记录下的不仅是身影，更是并肩走过的时光。每一次出行，都是故事的续写。
+      </p>
+
+      <div class="photo-grid reveal reveal-delay-4">
+        <div class="photo-placeholder has-image" title="古寺 · 蓝衣同行">
+          <img class="photo-placeholder__img" src="../assets/images/brothers/brothers-temple-selfie.jpg" alt="古寺蓝衣合影" loading="lazy">
+          <span class="photo-placeholder__number">01</span>
+          <span class="photo-placeholder__hint">古寺同行</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="长城 · 不到长城非好汉">
+          <img class="photo-placeholder__img" src="../assets/images/brothers/brothers-greatwall.jpg" alt="长城好汉碑前合影" loading="lazy">
+          <span class="photo-placeholder__number">02</span>
+          <span class="photo-placeholder__hint">长城好汉</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="鸟巢 · 夜晚的鸟巢">
+          <img class="photo-placeholder__img" src="../assets/images/brothers/brothers-birdnest.jpg" alt="鸟巢夜景合影" loading="lazy">
+          <span class="photo-placeholder__number">03</span>
+          <span class="photo-placeholder__hint">鸟巢之夜</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="搞怪时刻">
+          <img class="photo-placeholder__img" src="../assets/images/brothers/brothers-funny-face.jpg" alt="搞怪自拍" loading="lazy">
+          <span class="photo-placeholder__number">04</span>
+          <span class="photo-placeholder__hint">搞怪瞬间</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== 第三板块：名山 — 风景摄影 ====== -->
+  <section class="photo-section photo-section--dark" id="famous-mountains" aria-label="名山">
+    <div class="photo-section__content">
+      <span class="photo-section__label reveal reveal-delay-1">03 — 名山</span>
+
+      <h2 class="photo-section__title reveal reveal-delay-2">
+        名山
+        <span class="photo-section__title-accent">风景摄影</span>
+      </h2>
+
+      <p class="photo-section__desc reveal reveal-delay-3">
+        登高望远，山川河流在镜头里凝固成永恒。每一座山都有自己的故事，每一次按下快门都是与自然的对话。
+      </p>
+
+      <div class="photo-grid reveal reveal-delay-4">
+        <div class="photo-placeholder has-image" title="华山 · 苍龙岭远眺">
+          <img class="photo-placeholder__img" src="../assets/images/mountains/huashan-panorama.jpg" alt="华山 · 山峦叠嶂" loading="lazy">
+          <span class="photo-placeholder__number">01</span>
+          <span class="photo-placeholder__hint">华山</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="华山 · 苍龙岭天梯">
+          <img class="photo-placeholder__img" src="../assets/images/mountains/huashan-canglongling.jpg" alt="华山 · 苍龙岭" loading="lazy">
+          <span class="photo-placeholder__number">02</span>
+          <span class="photo-placeholder__hint">苍龙岭</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="山顶俯瞰 · 群山绵延">
+          <img class="photo-placeholder__img" src="../assets/images/mountains/mountain-overlook.jpg" alt="山顶俯瞰全景" loading="lazy">
+          <span class="photo-placeholder__number">03</span>
+          <span class="photo-placeholder__hint">俯瞰群峰</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="武当山 · 云海翻涌">
+          <img class="photo-placeholder__img" src="../assets/images/mountains/wudang-sea-clouds.jpg" alt="武当山云海" loading="lazy">
+          <span class="photo-placeholder__number">04</span>
+          <span class="photo-placeholder__hint">武当云海</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== 第四板块：足迹 — 城市人文 ====== -->
+  <section class="photo-section photo-section--alt" id="travels" aria-label="足迹">
+    <div class="photo-section__content">
+      <span class="photo-section__label reveal reveal-delay-1">04 — 足迹</span>
+
+      <h2 class="photo-section__title reveal reveal-delay-2">
+        足迹
+        <span class="photo-section__title-accent">城市人文</span>
+      </h2>
+
+      <p class="photo-section__desc reveal reveal-delay-3">
+        行走于城市之间，驻足于历史深处。从古老的宫殿到现代的灯火，每一步都是对世界的丈量，每一次按下快门都是与时空的对话。
+      </p>
+
+      <div class="photo-grid reveal reveal-delay-4">
+        <div class="photo-placeholder has-image" title="雍和宫 · 古刹庄严">
+          <img class="photo-placeholder__img" src="../assets/images/city/yonghe-palace.jpg" alt="雍和宫牌匾" loading="lazy">
+          <span class="photo-placeholder__number">01</span>
+          <span class="photo-placeholder__hint">雍和古刹</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="奥林匹克 · 城市夜景">
+          <img class="photo-placeholder__img" src="../assets/images/city/olympic-night.jpg" alt="奥林匹克公园夜景" loading="lazy">
+          <span class="photo-placeholder__number">02</span>
+          <span class="photo-placeholder__hint">奥运夜色</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="兵马俑 · 千年军阵">
+          <img class="photo-placeholder__img" src="../assets/images/city/terracotta-warriors.jpg" alt="秦始皇陵兵马俑" loading="lazy">
+          <span class="photo-placeholder__number">03</span>
+          <span class="photo-placeholder__hint">秦俑军阵</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="故宫 · 紫禁之巅">
+          <img class="photo-placeholder__img" src="../assets/images/city/forbidden-city.jpg" alt="故宫博物院全景" loading="lazy">
+          <span class="photo-placeholder__number">04</span>
+          <span class="photo-placeholder__hint">紫禁之巅</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== 第五板块：花草 — 自然之美 ====== -->
+  <section class="photo-section photo-section--dark" id="flowers" aria-label="花草">
+    <div class="photo-section__content">
+      <span class="photo-section__label reveal reveal-delay-1">05 — 花草</span>
+
+      <h2 class="photo-section__title reveal reveal-delay-2">
+        花草
+        <span class="photo-section__title-accent">自然之美</span>
+      </h2>
+
+      <p class="photo-section__desc reveal reveal-delay-3">
+        花开花落，草木荣枯。镜头捕捉的不只是色彩与形态，更是自然无声的呼吸。每一朵花都有自己的姿态，每一片叶子都有它的故事。
+      </p>
+
+      <div class="photo-grid reveal reveal-delay-4">
+        <div class="photo-placeholder has-image" title="黄玫瑰 · 晨露未干">
+          <img class="photo-placeholder__img" src="../assets/images/flowers/yellow-roses.jpg" alt="两朵黄玫瑰" loading="lazy">
+          <span class="photo-placeholder__number">01</span>
+          <span class="photo-placeholder__hint">黄玫瑰</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="粉色花球 · 公园一角">
+          <img class="photo-placeholder__img" src="../assets/images/flowers/pink-flower-ball.jpg" alt="公园粉色花球灌木" loading="lazy">
+          <span class="photo-placeholder__number">02</span>
+          <span class="photo-placeholder__hint">花球灌木</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="粉玫瑰 · 晨露晶莹">
+          <img class="photo-placeholder__img" src="../assets/images/flowers/pink-rose-drops.jpg" alt="雨后粉玫瑰特写" loading="lazy">
+          <span class="photo-placeholder__number">03</span>
+          <span class="photo-placeholder__hint">晨露玫瑰</span>
+        </div>
+
+        <div class="photo-placeholder has-image" title="白玫瑰 · 蜜蜂造访">
+          <img class="photo-placeholder__img" src="../assets/images/flowers/white-rose-bee.jpg" alt="白玫瑰与蜜蜂" loading="lazy">
+          <span class="photo-placeholder__number">04</span>
+          <span class="photo-placeholder__hint">蜂舞花间</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== 底部联系区域（完全复刻首页第四屏）====== -->
+  <section class="contact-section" id="contact" aria-label="联系">
+    <div class="contact-section__content">
+      <!-- 区块序号标签 -->
+      <span class="contact-section__label reveal reveal-delay-1">06 — 联系</span>
+
+      <!-- 大标题：取得 / 联系 -->
+      <h2 class="contact-section__title reveal reveal-delay-2">
+        取得
+        <span style="color:var(--color-warm-orange);display:block;">联系</span>
+      </h2>
+
+      <!-- 描述文字 -->
+      <p class="contact-section__desc reveal reveal-delay-3">
+        无论是硬件技术合作、摄影项目咨询，还是技术交流，都欢迎联系。
+      </p>
+
+      <!-- 联系按钮组 -->
+      <div class="contact-section__links reveal reveal-delay-4">
+        <!-- 邮件按钮 -->
+        <a class="contact-section__link" href="mailto:1400548734@qq.com">
+          <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22 4 12 13 2 4"/></svg>
+          发送邮件
+        </a>
+                <!-- 微信按钮：点击弹出二维码 -->
+        <a class="contact-section__link" href="javascript:void(0)" onclick="document.getElementById('qrModalExplore').classList.add('show')" title="点击查看微信二维码">
+          <svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7A6 6 0 018 8z"/><rect x="2" y="9" width="4" height="12"/><rect x="18" y="9" width="4" height="12"/></svg>
+          <span>微信</span>
+        </a>
+        <!-- GitHub 按钮 -->
+        <a class="contact-section__link" href="#">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          GitHub
+        </a>
+      </div>
+
+      <!-- 底部版权 -->
+      <div class="contact-section__footer reveal reveal-delay-4">
+        © 2026 工程师 · 探索者 — PCB硬件工程师
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== 交互脚本 ====== -->
+  <script>
+    /* 使用 IIFE 隔离作用域 */
+    (() => {
+      /* ------ 1. 滚动入场动画（与首页完全一致）------ */
+      const reveals = document.querySelectorAll('.reveal');
+
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);  /* 只触发一次 */
+              }
+            });
+          },
+          { threshold: 0.15, rootMargin: '0px 0px -60px 0px' }
+        );
+        reveals.forEach(el => observer.observe(el));
+      } else {
+        /* 降级方案：浏览器不支持时直接显示 */
+        reveals.forEach(el => el.classList.add('is-visible'));
+      }
+
+      /* ------ 2. 图片占位框点击提示（仅对无图片的占位框）------ */
+      document.querySelectorAll('.photo-placeholder').forEach(placeholder => {
+        placeholder.addEventListener('click', () => {
+          if (!placeholder.classList.contains('has-image')) {
+            alert('请在此处添加您的图片文件。\n\n添加方法：\n1. 将图片放入网站目录\n2. 修改 <img> 标签的 src 属性为图片路径');
+          }
+        });
+      });
+    })();
+  </script>
+
+  <!-- 微信二维码弹窗（探索页专用） -->
+  <div class="qr-modal-overlay" id="qrModalExplore" onclick="this.classList.remove('show')">
+    <button class="qr-modal-close" aria-label="关闭">&times;</button>
+    <div class="qr-modal-box" onclick="event.stopPropagation()">
+      <img src="图片集/微信二维码/微信二维码.png" alt="微信二维码">
+      <p class="qr-modal-text">扫一扫，添加我为好友</p>
+    </div>
+  </div>
+</body>
+</html>

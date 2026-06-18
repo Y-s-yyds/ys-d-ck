@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<!-- ====================================================================
+     个人品牌首页 — PCB 硬件工程师
+     页面结构：4 屏滚动
+       第一屏 Hero  — 全屏背景图 + 主标题/副标题
+       第二屏 探索  — 3.jpg 背景 + 引言 + CTA 按钮
+       第三屏 故事  — 5.jpg 背景 + 极简引言
+       第四屏 联系  — 深海蓝底 + 联系按钮
+     配色：深海蓝 #0f243b / 暖橙 #ff782e / 白 #ffffff
+     字体：Inter (Google Fonts)，备用 system-ui
+     作者：UI Designer
+     ==================================================================== -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>工程师 · 探索者 — PCB硬件工程师</title>
+
+  <!-- ===== 字体引入：Inter 300/600/800 三种粗细 ===== -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ========== 全局重置 ==========
+       清除所有元素默认 margin/padding
+       border-box 让 padding 不撑大元素尺寸 */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* 平滑滚动：点击导航锚点时动画过渡 */
+    html {
+      scroll-behavior: smooth;
+    }
+
+    /* body 基础：全宽 + Inter 字体 + 深海蓝底色（避免加载白屏） */
+    body {
+      width: 100%;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: #0f243b;
+    }
+
+    /* ========== 设计令牌（CSS 自定义属性）==========
+       在此集中管理颜色、高度、缓动曲线
+       修改颜色只需改这里，全站自动生效 */
+    :root {
+      --color-deep-blue: #0f243b;    /* 主色：深海蓝 */
+      --color-warm-orange: #ff782e;  /* 高亮色：暖橙 */
+      --color-white: #ffffff;        /* 正文白色 */
+      --color-muted: rgba(255, 255, 255, 0.45); /* 次要文字灰白 */
+      --nav-height: 4.5rem;          /* 导航栏高度 72px */
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);   /* 高级缓动曲线 */
+      --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);   /* 次级缓动曲线 */
+    }
+
+    /* ========== 滚动入场动画 ==========
+       .reveal 初始隐藏（透明 + 下移 40px）
+       .reveal.is-visible 恢复显示
+       由 JS IntersectionObserver 在元素进入视口时添加 is-visible */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.8s var(--ease-out-expo),
+                  transform 0.8s var(--ease-out-expo);
+    }
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    /* 四级延迟：让元素依次入场，形成视觉层次 */
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.22s; }
+    .reveal-delay-3 { transition-delay: 0.36s; }
+    .reveal-delay-4 { transition-delay: 0.5s; }
+
+    /* ============================================================
+       第一屏：Hero / Intro — 全屏背景图 + 主标题
+       ============================================================ */
+    .hero {
+      position: relative;
+      width: 100vw;     /* 视口宽度 */
+      height: 100vh;    /* 视口高度 — 全屏 */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Hero 背景图：cover 铺满，居中裁切 */
+    .hero__bg {
+      position: absolute;
+      inset: 0;    /* 等同 top:0;right:0;bottom:0;left:0 */
+      background: url('../assets/images/hero-bg.jpg') center / cover no-repeat;
+      z-index: 0;
+    }
+
+    /* Hero 遮罩层：深海蓝叠加，透明度 0.55
+       作用：压暗背景图，让白色文字可读 */
+    .hero__overlay {
+      position: absolute;
+      inset: 0;
+      background-color: var(--color-deep-blue);
+      opacity: 0.55;
+      z-index: 1;
+    }
+
+    /* Hero 内容容器：居中，最大宽度 56rem */
+    .hero__content {
+      position: relative;
+      z-index: 2;    /* 在遮罩之上 */
+      text-align: center;
+      padding: 0 2rem;
+      max-width: 56rem;
+    }
+
+    /* 主标题：clamp() 实现流体字号
+       最小 2.8rem → 6vw → 最大 4.5rem
+       weight 800 超粗，letter-spacing 增加字距 */
+    .hero__title {
+      font-weight: 800;
+      font-size: clamp(2.8rem, 6vw, 4.5rem);
+      line-height: 1.1;
+      color: var(--color-white);
+      letter-spacing: 0.08em;
+      /* 入场动画：从下方 30px 淡入 */
+      opacity: 0;
+      transform: translateY(30px);
+      animation: fadeSlideUp 0.9s var(--ease-out-expo) 0.3s forwards;
+    }
+
+    /* 标题中的分隔点：暖橙色 */
+    .hero__title .dot {
+      display: inline-block;
+      color: var(--color-warm-orange);
+      margin: 0 0.15em;
+      font-size: 0.85em;
+    }
+
+    /* 副标题：细字 weight 300，流体字号 */
+    .hero__subtitle {
+      font-weight: 300;
+      font-size: clamp(0.95rem, 2vw, 1.2rem);
+      line-height: 1.6;
+      color: var(--color-white);
+      letter-spacing: 0.05em;
+      margin-top: 1.5rem;
+      /* 入场动画：比标题延迟 0.55s */
+      opacity: 0;
+      transform: translateY(30px);
+      animation: fadeSlideUp 0.9s var(--ease-out-expo) 0.55s forwards;
+    }
+
+    /* 副标题高亮词：暖橙色加粗 */
+    .hero__highlight {
+      color: var(--color-warm-orange);
+      font-weight: 600;
+    }
+
+    /* 关键帧：从 translateY(30px) + 透明 → 原位 + 不透明 */
+    @keyframes fadeSlideUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 底部箭头：居中，2s 周期上下浮动，无限循环 */
+    .hero__arrow {
+      position: absolute;
+      bottom: 2.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+      animation: arrowFloat 2s ease-in-out infinite;
+      cursor: pointer;
+    }
+    .hero__arrow svg {
+      width: 28px;
+      height: 28px;
+      stroke: var(--color-white);
+      stroke-width: 2;
+      fill: none;
+      opacity: 0.6;
+      transition: opacity 0.3s ease;
+    }
+    .hero__arrow:hover svg { opacity: 1; }
+
+    /* 箭头浮动动画：0% 原位 → 50% 下移 10px → 100% 回原位 */
+    @keyframes arrowFloat {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50%      { transform: translateX(-50%) translateY(10px); }
+    }
+
+    /* ============================================================
+       第二屏：Explore — 航拍世界（背景图 explore-bg.jpg = 用户 3.jpg）
+       ============================================================ */
+    .explore {
+      position: relative;
+      width: 100vw;
+      min-height: 100vh;    /* 最小全屏，内容多时自动撑高 */
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    /* Explore 背景图 */
+    .explore__bg {
+      position: absolute;
+      inset: 0;
+      background: url('../assets/images/explore-bg.jpg') center / cover no-repeat;
+      z-index: 0;
+    }
+
+    /* Explore 遮罩：135° 渐变，比 Hero 更有层次感 */
+    .explore__overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(15,36,59,0.82) 0%, rgba(15,36,59,0.58) 50%, rgba(15,36,59,0.72) 100%);
+      z-index: 1;
+    }
+
+    /* Explore 内容容器：左偏布局，最大宽度 72rem */
+    .explore__content {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 6rem clamp(2rem, 6vw, 6rem);    /* 上下 6rem，左右流体 */
+    }
+
+    /* 区块序号标签：如 "02 — 探索"，暖橙色 + 装饰短线 */
+    .explore__label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      color: var(--color-warm-orange);
+      margin-bottom: 2.5rem;
+    }
+    .explore__label::before {
+      content: '';
+      display: block;
+      width: 2.5rem;
+      height: 1.5px;
+      background: var(--color-warm-orange);
+    }
+
+    /* Explore 大标题：双行，第二行暖橙高亮 */
+    .explore__title {
+      font-weight: 800;
+      font-size: clamp(2.4rem, 5.5vw, 4.2rem);
+      line-height: 1.15;    /* 中文行距稍大 */
+      color: var(--color-white);
+      letter-spacing: 0.04em;
+      margin-bottom: 2rem;
+    }
+    .explore__title-line--accent {
+      color: var(--color-warm-orange);
+      display: block;    /* 独占一行 */
+    }
+
+    /* Explore 引言文字 */
+    .explore__quote {
+      font-weight: 300;
+      font-size: clamp(1rem, 1.8vw, 1.2rem);
+      line-height: 1.75;
+      color: var(--color-muted);    /* 灰白色 */
+      max-width: 34rem;    /* 限制宽度，避免过长行 */
+      margin-bottom: 3rem;
+      letter-spacing: 0.01em;
+    }
+    .explore__quote em {
+      font-style: normal;
+      color: var(--color-white);    /* em 标签内文字白色强调 */
+      font-weight: 400;
+    }
+
+    /* Explore CTA 按钮：暖橙实心 */
+    .explore__cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.85rem 2rem;
+      background: var(--color-warm-orange);
+      color: var(--color-white);
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: transform 0.25s var(--ease-out-quart),
+                  box-shadow 0.25s ease;
+    }
+    .explore__cta:hover {
+      transform: translateY(-2px);    /* 悬停微抬 */
+      box-shadow: 0 8px 24px rgba(255, 120, 46, 0.3);    /* 暖橙光晕 */
+    }
+    .explore__cta svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      transition: transform 0.25s var(--ease-out-quart);
+    }
+    .explore__cta:hover svg { transform: translateX(3px); }    /* 悬停箭头右移 */
+
+    /* 右侧竖排装饰文字：仅桌面端可见 */
+    .explore__side-label {
+      position: absolute;
+      right: clamp(2rem, 4vw, 5rem);
+      top: 50%;
+      transform: translateY(-50%) rotate(90deg);    /* 旋转 90° 竖排 */
+      transform-origin: center center;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.25em;
+      color: rgba(255, 255, 255, 0.18);    /* 极淡 */
+      z-index: 2;
+      white-space: nowrap;
+      pointer-events: none;    /* 不拦截鼠标 */
+    }
+
+    /* 右下角坐标装饰 */
+    .explore__coords {
+      position: absolute;
+      right: clamp(2rem, 4vw, 5rem);
+      bottom: 3rem;
+      font-size: 0.65rem;
+      font-weight: 300;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.2);
+      z-index: 2;
+      font-variant-numeric: tabular-nums;    /* 等宽数字 */
+      pointer-events: none;
+    }
+
+    /* ============================================================
+       第三屏：故事 — 极简引言（背景图 story-bg.jpg = 用户 5.jpg）
+       ============================================================ */
+    .story-section {
+      position: relative;
+      width: 100vw;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* 故事屏背景图 */
+    .story-section__bg {
+      position: absolute;
+      inset: 0;
+      background: url('../assets/images/story-bg.jpg') center / cover no-repeat;
+      z-index: 0;
+    }
+
+    /* 故事屏遮罩：135° 渐变，比 Explore 更深 */
+    .story-section__overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(15,36,59,0.90) 0%, rgba(15,36,59,0.75) 100%);
+      z-index: 1;
+    }
+
+    /* 故事屏内容：居中，最大宽度 64rem */
+    .story-section__content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding: 0 clamp(2rem, 6vw, 8rem);
+      max-width: 64rem;
+    }
+
+    /* 区块序号标签（与 Explore 同风格） */
+    .story-section__label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      color: var(--color-warm-orange);
+      margin-bottom: 2.5rem;
+    }
+    .story-section__label::before {
+      content: '';
+      display: block;
+      width: 2.5rem;
+      height: 1.5px;
+      background: var(--color-warm-orange);
+    }
+
+    /* 故事大字引言：流体字号，细字 */
+    .story-section__text {
+      font-weight: 300;
+      font-size: clamp(1.6rem, 4vw, 3.2rem);
+      line-height: 1.35;
+      color: var(--color-white);
+      letter-spacing: 0.01em;
+      margin-bottom: 2rem;
+    }
+
+    /* 引言署名：暖橙色小字 */
+    .story-section__attr {
+      font-weight: 600;
+      font-size: 0.82rem;
+      color: var(--color-warm-orange);
+      letter-spacing: 0.12em;
+    }
+
+    /* 底部装饰短线 */
+    .story-section__line {
+      display: block;
+      width: 2.5rem;
+      height: 1.5px;
+      background: rgba(255, 255, 255, 0.2);
+      margin: 2.5rem auto 0;
+    }
+
+    /* ============================================================
+       第四屏：联系 — 深海蓝底色 + 联系按钮
+       ============================================================ */
+    .contact-section {
+      position: relative;
+      width: 100vw;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: url('../assets/images/contact-bg.jpg') center / cover no-repeat;
+    }
+
+    .contact-section__content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding: 0 clamp(2rem, 6vw, 8rem);
+      max-width: 56rem;
+    }
+
+    /* 区块序号标签 */
+    .contact-section__label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      color: var(--color-warm-orange);
+      margin-bottom: 2.5rem;
+    }
+    .contact-section__label::before {
+      content: '';
+      display: block;
+      width: 2.5rem;
+      height: 1.5px;
+      background: var(--color-warm-orange);
+    }
+
+    /* 联系大标题：双行，第二行暖橙 */
+    .contact-section__title {
+      font-weight: 800;
+      font-size: clamp(2.4rem, 5.5vw, 4.2rem);
+      line-height: 1.15;
+      color: var(--color-white);
+      letter-spacing: 0.04em;
+      margin-bottom: 1.5rem;
+    }
+    /* 标题高亮词：暖橙 + 换行 */
+    .contact-highlight {
+      color: var(--color-warm-orange);
+      display: block;
+    }
+
+    /* 联系描述文字 */
+    .contact-section__desc {
+      font-weight: 300;
+      font-size: clamp(1rem, 1.8vw, 1.2rem);
+      line-height: 1.75;
+      color: var(--color-muted);
+      margin-bottom: 3rem;
+    }
+
+    /* 联系按钮组：水平排列，自动换行 */
+    .contact-section__links {
+      display: flex;
+      justify-content: center;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+    }
+
+    /* 单个联系按钮：描边样式，悬停变暖橙 */
+    .contact-section__link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.8rem 1.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: var(--color-white);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      transition: border-color 0.25s ease,
+                  background 0.25s ease,
+                  color 0.25s ease;
+    }
+    .contact-section__link:hover {
+      border-color: var(--color-warm-orange);
+      background: rgba(255, 120, 46, 0.1);
+      color: var(--color-warm-orange);
+    }
+    .contact-section__link svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    /* 底部版权 */
+    .contact-section__footer {
+      margin-top: 4rem;
+      font-size: 0.75rem;
+      font-weight: 300;
+      color: rgba(255, 255, 255, 0.25);
+      letter-spacing: 0.06em;
+    }
+
+    /* ============================================================
+       导航栏：固定顶部，毛玻璃效果
+       ============================================================ */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      height: var(--nav-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(1.5rem, 4vw, 4rem);
+      background: rgba(15, 36, 59, 0.75);    /* 半透明深海蓝 */
+      backdrop-filter: blur(12px);            /* 毛玻璃模糊 */
+      -webkit-backdrop-filter: blur(12px);    /* Safari 兼容 */
+      transition: background 0.35s ease;
+    }
+    /* 滚动超过 30% 视口后导航栏加深 */
+    .nav.is-scrolled { background: rgba(15, 36, 59, 0.92); }
+
+    /* 桌面导航链接列表 */
+    .nav__links {
+      display: flex;
+      align-items: center;
+      gap: 2.5rem;
+      list-style: none;
+    }
+
+    /* 单个导航链接 */
+    .nav__link {
+      color: var(--color-white);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+    .nav__link:hover { color: var(--color-warm-orange); }
+    .nav__link.is-active { color: var(--color-warm-orange); }
+
+    /* 右侧"简历"按钮：暖橙描边 */
+    .nav__resume {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.5rem 1.4rem;
+      border: 1.5px solid var(--color-warm-orange);
+      border-radius: 6px;
+      color: var(--color-warm-orange);
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      transition: background 0.25s ease, color 0.25s ease;
+    }
+    .nav__resume:hover {
+      background: var(--color-warm-orange);
+      color: var(--color-white);
+    }
+
+    /* 移动端汉堡按钮（≤768px 显示） */
+    .nav__burger {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      width: 28px;
+      height: 28px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+    }
+    .nav__burger span {
+      display: block;
+      width: 100%;
+      height: 2px;
+      background: var(--color-white);
+      border-radius: 2px;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    /* 汉堡按钮打开状态：变 X */
+    .nav__burger.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav__burger.is-open span:nth-child(2) { opacity: 0; }
+    .nav__burger.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* 移动端下拉菜单面板 */
+    .nav__mobile-menu {
+      display: none;
+      position: fixed;
+      top: var(--nav-height);
+      left: 0; right: 0;
+      background: rgba(15, 36, 59, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 2rem 1.5rem;
+      z-index: 99;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .nav__mobile-menu.is-open { display: flex; }
+    .nav__mobile-menu .nav__link { font-size: 1.1rem; }
+    .nav__mobile-menu .nav__resume {
+      align-self: flex-start;
+      font-size: 0.9rem;
+      padding: 0.6rem 1.6rem;
+    }
+
+    /* ============================================================
+       响应式：移动端 ≤768px
+       ============================================================ */
+    @media (max-width: 768px) {
+      .nav__links { display: none; }       /* 隐藏桌面导航 */
+      .nav__burger { display: flex; }      /* 显示汉堡按钮 */
+
+      .hero__content { padding: 0 1.2rem; }
+      .hero__subtitle { margin-top: 1rem; }
+
+      .explore__content { padding: 5rem 1.5rem; }
+      .explore__side-label { display: none; }  /* 隐藏竖排装饰 */
+      .explore__coords { display: none; }       /* 隐藏坐标装饰 */
+      .explore__quote { max-width: 100%; }
+
+      .story-section__text { font-size: clamp(1.3rem, 5vw, 2rem); }
+
+      .contact-section__links { flex-direction: column; align-items: center; }
+    }
+
+    /* ============================================================
+       无障碍：尊重 prefers-reduced-motion（减少动效）
+       ============================================================ */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+
+      .hero__title,
+      .hero__subtitle {
+        animation-duration: 0.01ms;
+        animation-delay: 0ms;
+        opacity: 1;
+        transform: none;
+      }
+      .hero__arrow { animation: none; }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+      }
+    }
+
+    /* 键盘焦点样式：所有可交互元素统一暖橙描边 */
+    .nav__link:focus-visible,
+    .nav__resume:focus-visible,
+    .explore__cta:focus-visible {
+      outline: 2px solid var(--color-warm-orange);
+      outline-offset: 3px;
+    }
+    /* 微信复制成功弹窗 */
+    .toast-copy {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(255, 120, 46, 0.95);
+      color: #fff;
+      padding: 0.7rem 1.5rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      z-index: 9999;
+    }
+    .toast-copy.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .toast-copy { transition: none; }
+    }
+  
+    /* 微信二维码弹窗 */
+    .qr-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 36, 59, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .qr-modal-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .qr-modal-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 1.5rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+      max-width: min(320px, 80vw);
+    }
+    .qr-modal-overlay.show .qr-modal-box {
+      transform: scale(1);
+    }
+    .qr-modal-box img {
+      width: 260px;
+      max-width: 100%;
+      border-radius: 10px;
+      display: block;
+    }
+    .qr-modal-text {
+      margin-top: 0.9rem;
+      font-size: 0.88rem;
+      color: #555;
+      letter-spacing: 0.04em;
+    }
+    .qr-modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1.5rem;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1.3rem;
+      line-height: 1;
+      transition: background 0.2s;
+    }
+    .qr-modal-close:hover {
+      background: rgba(255,120,46,0.6);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .qr-modal-overlay, .qr-modal-box { transition: none; }
+    }
+
+
+    /* 第五屏：隐藏微信二维码 - 正常滚动不可见，仅通过按钮触发 */
+    .wechat-hidden-screen {
+      position: relative;
+      width: 100vw;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: max-height 0.5s ease, opacity 0.5s ease;
+      background: var(--color-deep-blue);
+    }
+    .wechat-hidden-screen.visible {
+      max-height: 100vh;
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .wechat-hidden-screen__content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+    .wechat-hidden-screen__label {
+      display: inline-block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
+      color: var(--color-warm-orange);
+      margin-bottom: 1.5rem;
+    }
+    .wechat-hidden-screen__title {
+      font-weight: 800;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      color: #fff;
+      margin-bottom: 2.5rem;
+      letter-spacing: 0.04em;
+    }
+    .wechat-hidden-screen__card {
+      background: rgba(255,255,255,0.97);
+      border-radius: 20px;
+      padding: 2.5rem 2rem;
+      display: inline-block;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      max-width: 320px;
+      animation: wechatCardIn 0.5s ease forwards;
+    }
+    @keyframes wechatCardIn {
+      from { opacity: 0; transform: translateY(30px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .wechat-hidden-screen__card img {
+      width: 260px;
+      max-width: 100%;
+      border-radius: 12px;
+      display: block;
+      margin-bottom: 1rem;
+    }
+    .wechat-hidden-screen__hint {
+      font-size: 0.88rem;
+      color: #666;
+      margin-top: 0.75rem;
+      letter-spacing: 0.03em;
+    }
+    .wechat-hidden-screen__back {
+      display: inline-block;
+      margin-top: 2rem;
+      padding: 0.65rem 2rem;
+      border: 1.5px solid rgba(255,255,255,0.3);
+      border-radius: 30px;
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      transition: all 0.25s;
+    }
+    .wechat-hidden-screen__back:hover {
+      border-color: var(--color-warm-orange);
+      color: var(--color-warm-orange);
+      transform: translateY(-2px);
+    }
+    @media (max-width: 480px) {
+      .wechat-hidden-screen__card {
+        padding: 1.8rem 1.5rem;
+        margin: 0 1rem;
+      }
+      .wechat-hidden-screen__card img {
+        width: 220px;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .wechat-hidden-screen { transition: none; }
+      .wechat-hidden-screen__card { animation: none; }
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- ====== 导航栏（固定顶部，毛玻璃效果）====== -->
+  <nav class="nav" role="navigation" aria-label="主导航">
+    <!-- 桌面端导航链接列表 -->
+    <ul class="nav__links">
+      <!-- data-section 属性用于 JS 滚动高亮 -->
+      <li><a class="nav__link is-active" href="#intro" data-section="intro">首页</a></li>
+      <li><a class="nav__link" href="explore.html">探索</a></li>
+      <!-- "作品" 链接到独立页面 works.html，新标签页打开 -->
+      <li><a class="nav__link" href="works.html" target="_blank" rel="noopener">作品</a></li>
+      <li><a class="nav__link" href="resume.html" data-section="story">简历</a></li>
+      <li><a class="nav__link" href="#contact" data-section="contact">联系</a></li>
+    </ul>
+
+    <!-- 右侧"首页"按钮 -->
+    <a class="nav__resume" href="#intro" aria-label="回到首页">首页</a>
+
+    <!-- 移动端汉堡按钮 -->
+    <button class="nav__burger" aria-label="打开导航菜单" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </nav>
+
+  <!-- 移动端下拉菜单面板 -->
+  <div class="nav__mobile-menu" id="mobileMenu" aria-hidden="true">
+    <a class="nav__link" href="#intro">首页</a>
+    <a class="nav__link" href="explore.html">探索</a>
+    <a class="nav__link" href="works.html" target="_blank" rel="noopener">作品</a>
+    <a class="nav__link" href="resume.html">简历</a>
+    <a class="nav__link" href="#contact">联系</a>
+  </div>
+
+  <!-- ====== 第一屏：Hero / Intro ====== -->
+  <section class="hero" id="intro" aria-label="首页">
+    <!-- 背景图层 -->
+    <div class="hero__bg" aria-hidden="true"></div>
+    <!-- 遮罩层 -->
+    <div class="hero__overlay" aria-hidden="true"></div>
+
+    <!-- 内容层 -->
+    <div class="hero__content">
+      <!-- 主标题：工程师 · 探索者 -->
+      <h1 class="hero__title">
+        工程师<span class="dot">·</span>探索者
+      </h1>
+      <!-- 副标题：PCB硬件工程师高亮 -->
+      <p class="hero__subtitle">
+        <span class="hero__highlight">PCB硬件工程师</span> | 旅游摄影爱好者
+      </p>
+    </div>
+
+    <!-- 底部箭头：点击平滑滚动到第二屏 -->
+    <a class="hero__arrow" href="explore.html" aria-label="探索更多">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="6 9 12 15 18 9" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </a>
+  </section>
+
+  <!-- ====== 第二屏：Explore — 航拍世界 ====== -->
+  <section class="explore" id="explore" aria-label="探索">
+    <div class="explore__bg" aria-hidden="true"></div>
+    <div class="explore__overlay" aria-hidden="true"></div>
+
+    <!-- 右侧竖排装饰文字（仅桌面端可见） -->
+    <span class="explore__side-label" aria-hidden="true">摄影 · 记录美好生活</span>
+    <!-- 右下角坐标装饰 -->
+    <span class="explore__coords" aria-hidden="true">30°15'N · 120°10'E</span>
+
+    <div class="explore__content">
+      <!-- 区块序号 -->
+      <span class="explore__label reveal reveal-delay-1">02 — 探索</span>
+
+      <!-- 双行大标题：俯瞰 / 世界 -->
+      <h2 class="explore__title reveal reveal-delay-2">
+        俯瞰
+        <span class="explore__title-line--accent">世界</span>
+      </h2>
+
+      <!-- 引言文字 -->
+      <p class="explore__quote reveal reveal-delay-3">
+        铜箔沿板材布线，世界在眼底铺开。<em>镜头捕捉的每一帧</em>，藏着电路板的严谨与远方山河的温柔。
+      </p>
+
+      <!-- CTA 按钮：跳转到作品页 -->
+      <a class="explore__cta reveal reveal-delay-4" href="explore.html">
+        请观看我的世界
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round"/>
+          <polyline points="12 5 19 12 12 19" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- ====== 第三屏：故事 — 极简引言 ====== -->
+  <section class="story-section" id="story" aria-label="故事">
+    <div class="story-section__bg" aria-hidden="true"></div>
+    <div class="story-section__overlay" aria-hidden="true"></div>
+
+    <div class="story-section__content">
+      <!-- 区块序号 -->
+      <span class="story-section__label reveal reveal-delay-1">03 — 故事</span>
+
+      <!-- 大字引言：<br> 手动换行 -->
+      <p class="story-section__text reveal reveal-delay-2">
+        一个人行走世界，寻找所需的答案，<br>却在归家时发现，答案一直在出发的地方。
+      </p>
+      <!-- 署名 -->
+      <span class="story-section__attr reveal reveal-delay-3">— 杨爽</span>
+      <!-- 底部装饰短线 -->
+      <span class="story-section__line reveal reveal-delay-4"></span>
+    </div>
+  </section>
+
+  <!-- ====== 第四屏：联系 ====== -->
+  <section class="contact-section" id="contact" aria-label="联系">
+    <div class="contact-section__content">
+      <!-- 区块序号 -->
+      <span class="contact-section__label reveal reveal-delay-1">04 — 联系</span>
+
+      <!-- 大标题：取得 / 联系 -->
+      <h2 class="contact-section__title reveal reveal-delay-2">
+        取得
+        <span class="contact-highlight">联系</span>
+      </h2>
+
+      <!-- 描述文字 -->
+      <p class="contact-section__desc reveal reveal-delay-3">
+        无论是硬件技术合作、摄影项目咨询，还是技术交流，都欢迎联系。
+      </p>
+
+      <!-- 联系按钮组 -->
+      <div class="contact-section__links reveal reveal-delay-4">
+        <!-- 邮件按钮：href 改成你的邮箱 -->
+        <a class="contact-section__link" href="mailto:1400548734@qq.com">
+          <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22 4 12 13 2 4"/></svg>
+          发送邮件
+        </a>
+                <!-- 微信按钮：点击展开隐藏的微信二维码屏 -->
+        <a class="contact-section__link" href="#wechat" onclick="event.preventDefault();document.getElementById('wechat').classList.add('visible');setTimeout(function(){document.getElementById('wechat').scrollIntoView({behavior:'smooth'})},50)" title="查看微信二维码">
+          <svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7A6 6 0 018 8z"/><rect x="2" y="9" width="4" height="12"/><rect x="18" y="9" width="4" height="12"/></svg>
+          <span>微信</span>
+        </a>
+        <!-- GitHub 按钮：href 填你的 GitHub 主页地址，如 https://github.com/yourusername -->
+        <a class="contact-section__link" href="#" title="请替换为你的 GitHub 主页链接">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          GitHub
+        </a>
+      </div>
+
+      <!-- 底部版权 -->
+      <div class="contact-section__footer reveal reveal-delay-4">
+        © 2026 工程师 · 探索者 — PCB硬件工程师
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== 交互脚本 ====== -->
+  <script>
+    /* 使用 IIFE（立即执行函数）隔离作用域，避免污染全局 */
+    (() => {
+      /* ------ 1. 移动端汉堡菜单 ------ */
+      const burger    = document.querySelector('.nav__burger');
+      const mobileMenu = document.getElementById('mobileMenu');
+
+      if (burger && mobileMenu) {
+        /* 点击汉堡按钮：切换开/关状态 */
+        burger.addEventListener('click', () => {
+          const isOpen = burger.classList.toggle('is-open');
+          mobileMenu.classList.toggle('is-open', isOpen);
+          burger.setAttribute('aria-expanded', String(isOpen));
+          mobileMenu.setAttribute('aria-hidden', String(!isOpen));
+        });
+
+        /* 点击菜单内链接后自动关闭（排除 target=_blank 的外链） */
+        mobileMenu.querySelectorAll('.nav__link').forEach(link => {
+          link.addEventListener('click', () => {
+            if (!link.target) {
+              burger.classList.remove('is-open');
+              mobileMenu.classList.remove('is-open');
+              burger.setAttribute('aria-expanded', 'false');
+              mobileMenu.setAttribute('aria-hidden', 'true');
+            }
+          });
+        });
+      }
+
+      /* ------ 2. 导航栏滚动状态 ------ */
+      /* 滚动超过 30% 视口高度后，导航栏背景加深 */
+      const nav = document.querySelector('.nav');
+
+      function updateNavOnScroll() {
+        if (!nav) return;
+        nav.classList.toggle('is-scrolled', window.scrollY > window.innerHeight * 0.3);
+      }
+      window.addEventListener('scroll', updateNavOnScroll, { passive: true });
+      updateNavOnScroll();  /* 页面加载时立即执行一次 */
+
+      /* ------ 3. 导航项高亮 ------ */
+      /* 根据当前滚动位置，自动高亮对应的导航项 */
+      const sections = document.querySelectorAll('section[id]');
+      const navLinks = document.querySelectorAll('.nav__link[data-section]');
+
+      function updateActiveLink() {
+        let currentId = '';
+        /* 找到当前在视口 40% 位置的区块 */
+        sections.forEach(section => {
+          const rect = section.getBoundingClientRect();
+          if (rect.top <= window.innerHeight * 0.4 && rect.bottom > 0) {
+            currentId = section.id;
+          }
+        });
+        /* 高亮对应的导航链接 */
+        navLinks.forEach(link => {
+          link.classList.toggle('is-active', link.dataset.section === currentId);
+        });
+      }
+      window.addEventListener('scroll', updateActiveLink, { passive: true });
+      updateActiveLink();
+
+      /* ------ 4. 滚动入场动画 ------ */
+      /* IntersectionObserver：元素进入视口时添加 is-visible 类 */
+      const reveals = document.querySelectorAll('.reveal');
+
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);  /* 只触发一次 */
+              }
+            });
+          },
+          { threshold: 0.15, rootMargin: '0px 0px -60px 0px' }
+        );
+        reveals.forEach(el => observer.observe(el));
+      } else {
+        /* 降级方案：浏览器不支持时直接显示 */
+        reveals.forEach(el => el.classList.add('is-visible'));
+      }
+    })();
+  </script>
+  <!-- ===== 第五屏：隐藏微信二维码 ===== -->
+  <section class="wechat-hidden-screen" id="wechat" aria-label="微信二维码">
+    <div class="wechat-hidden-screen__content">
+      <span class="wechat-hidden-screen__label">WeChat</span>
+      <h2 class="wechat-hidden-screen__title">扫一扫，加我微信</h2>
+      <div class="wechat-hidden-screen__card">
+        <img src="../assets/images/qr_code.png" alt="微信二维码">
+        <p class="wechat-hidden-screen__hint">打开微信扫一扫，添加我为好友</p>
+      </div>
+      <a href="#contact" class="wechat-hidden-screen__back" onclick="event.preventDefault();document.getElementById('wechat').classList.remove('visible');document.getElementById('contact').scrollIntoView({behavior:'smooth'})">返回联系页</a>
+    </div>
+  </section>
+
+</body>
+</html>
