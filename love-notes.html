@@ -2140,10 +2140,15 @@
       }
 
       if (type === 'taboo') {
+        const personBadge = item.person === 'male'
+          ? '<span style="display:inline-block;padding:0.1rem 0.5rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:#6b8cce;margin-right:0.4rem">👨 男生</span>'
+          : (item.person === 'female'
+            ? '<span style="display:inline-block;padding:0.1rem 0.5rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:var(--color-pink);margin-right:0.4rem">👩 女生</span>'
+            : '');
         return `
           <div class="record-card">
             <div class="record-card__header">
-              <div class="record-card__title">⚠️ ${Util.escapeHtml(item.content)}</div>
+              <div>${personBadge}<span class="record-card__title" style="display:inline">⚠️ ${Util.escapeHtml(item.content)}</span></div>
               <div class="record-card__actions">
                 <button class="icon-btn" onclick="App.openEdit('taboo','${item.id}')" title="编辑">✎</button>
                 <button class="icon-btn icon-btn--danger" onclick="App.confirmDelete('taboo','${item.id}')" title="删除">🗑</button>
@@ -2251,8 +2256,11 @@
         Object.entries(groups).forEach(([cat, items]) => {
           html += `<div class="record-card"><div class="record-card__header"><div class="record-card__title">${Util.escapeHtml(cat)}</div></div>`;
           items.forEach(i => {
+            const personBadge = i.person === 'male'
+              ? '<span style="display:inline-block;padding:0.1rem 0.4rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:#6b8cce;margin-right:0.4rem">👨</span>'
+              : '<span style="display:inline-block;padding:0.1rem 0.4rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:var(--color-pink);margin-right:0.4rem">👩</span>';
             html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid rgba(255,107,157,0.06)">
-              <span style="font-size:0.9rem;color:var(--color-text)">${Util.escapeHtml(i.value)}</span>
+              <span style="font-size:0.9rem;color:var(--color-text)">${personBadge}${Util.escapeHtml(i.value)}</span>
               <div style="display:flex;gap:0.4rem;align-items:center">
                 ${i.note ? `<span style="font-size:0.75rem;color:var(--color-muted)">${Util.escapeHtml(i.note)}</span>` : ''}
                 <button class="icon-btn" onclick="App.markPreferenceChanged('${i.id}')" title="标记为已变更" style="font-size:0.75rem">↻ 变更</button>
@@ -2484,6 +2492,17 @@
       else if (type === 'preference') {
         fields.innerHTML = `
           <div class="form-group">
+            <label class="form-label">对象</label>
+            <div style="display:flex;gap:1.2rem;padding-top:0.2rem">
+              <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
+                <input type="radio" name="f_person" value="female" ${val('person')!=='male'?'checked':''} style="accent-color:var(--color-pink)"> 👩 女生
+              </label>
+              <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
+                <input type="radio" name="f_person" value="male" ${val('person')==='male'?'checked':''} style="accent-color:#6b8cce"> 👨 男生
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
             <label class="form-label">分类 <span class="req">*</span></label>
             <select class="form-select" id="f_category">
               ${PREF_CATEGORIES.map(c => `<option value="${c}" ${val('category')===c?'selected':''}>${c}</option>`).join('')}
@@ -2500,6 +2519,17 @@
       }
       else if (type === 'taboo') {
         fields.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">对象</label>
+            <div style="display:flex;gap:1.2rem;padding-top:0.2rem">
+              <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
+                <input type="radio" name="f_person" value="female" ${val('person')!=='male'?'checked':''} style="accent-color:var(--color-pink)"> 👩 女生
+              </label>
+              <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
+                <input type="radio" name="f_person" value="male" ${val('person')==='male'?'checked':''} style="accent-color:#6b8cce"> 👨 男生
+              </label>
+            </div>
+          </div>
           <div class="form-group">
             <label class="form-label">忌讳内容 <span class="req">*</span></label>
             <textarea class="form-textarea" id="f_content" placeholder="如：不吃香菜" required>${val('content')}</textarea>
@@ -2635,6 +2665,11 @@
     },
 
     // ---- 保存记录 ----
+    _getFormPerson() {
+      const el = document.querySelector('input[name="f_person"]:checked');
+      return el ? el.value : 'female';
+    },
+
     saveRecord() {
       const type = this.editingType;
       if (!type) return;
@@ -2656,12 +2691,12 @@
       else if (type === 'preference') {
         const value = get('f_value');
         if (!value) { showToast('请输入喜好内容', 'warning'); return; }
-        data = { category: get('f_category'), value, note: get('f_note'), status: 'active' };
+        data = { category: get('f_category'), value, note: get('f_note'), person: this._getFormPerson(), status: 'active' };
       }
       else if (type === 'taboo') {
         const content = get('f_content');
         if (!content) { showToast('请输入忌讳内容', 'warning'); return; }
-        data = { content, tags: get('f_tags') };
+        data = { content, tags: get('f_tags'), person: this._getFormPerson() };
       }
       else if (type === 'expense') {
         const amount = get('f_amount');
