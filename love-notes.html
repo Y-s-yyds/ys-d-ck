@@ -1122,18 +1122,28 @@
       this.pulling = true;
       this._setStatus('syncing', '⏳ 正在同步…');
       try {
-        const resp = await fetch(this.rawUrl, { cache: 'no-store' });
-        if (!resp.ok || resp.status === 404) {
-          this._setStatus('idle', '☁ 尚无云端数据');
+        // ★ 用 GitHub API 替代 raw.githubusercontent.com，彻底避开 CDN 缓存
+        const apiUrl = `https://api.github.com/repos/${this.repo}/contents/${this.dataPath}?ref=${this.branch}&_=${Date.now()}`;
+        const headers = { 'Accept': 'application/vnd.github.v3+json' };
+        if (this._tk) headers['Authorization'] = 'token ' + this._tk;
+
+        const resp = await fetch(apiUrl, { headers, cache: 'no-store' });
+        if (!resp.ok) {
+          this._setStatus('idle', resp.status === 404 ? '☁ 尚无云端数据' : '⚠ 数据拉取失败');
           this.pulling = false;
-          // 如果有待推送的数据，现在可以推了
           if (this.pushPending) this.push();
           return false;
         }
-        const text = await resp.text();
+
+        const apiData = await resp.json();
+        // 顺便把 SHA 缓存起来，省一次 push 前的查询
+        this.sha = apiData.sha;
+
         let cloud;
-        try { cloud = JSON.parse(text); }
-        catch(e) { throw new Error('云端数据格式错误'); }
+        try {
+          const jsonText = apiData.encoding === 'base64' ? this._decode(apiData.content.replace(/\s/g, '')) : apiData.content;
+          cloud = JSON.parse(jsonText);
+        } catch(e) { throw new Error('云端数据格式错误'); }
 
         // 合并数据而不是覆盖（保留本地新数据 + 云端数据）
         if (cloud.settings) DB.setSettingsQuiet(cloud.settings);
