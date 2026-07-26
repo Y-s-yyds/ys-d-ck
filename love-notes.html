@@ -179,7 +179,7 @@
     .dashboard {
       position: relative;
       width: 100%;
-      padding: calc(var(--nav-height) + 3rem) 1.5rem 3rem;
+      padding: 1.5rem 1.5rem 3rem;
       text-align: center;
       overflow: hidden;
       background: radial-gradient(ellipse at 50% 0%, rgba(255,107,157,0.12) 0%, transparent 60%), linear-gradient(180deg, #fff5f7 0%, #ffe4ec 100%);
@@ -1010,29 +1010,14 @@
 </head>
 <body>
 
-  <!-- ====== 导航栏 ====== -->
-  <nav class="nav" role="navigation" aria-label="主导航">
-    <ul class="nav__links">
-      <li><a class="nav__link" href="index.html">首页</a></li>
-      <li><a class="nav__link" href="explore.html">探索</a></li>
-      <li><a class="nav__link" href="works.html" target="_blank" rel="noopener">作品</a></li>
-      <li><a class="nav__link is-active" href="love-notes.html">♡ 笔记</a></li>
-      <li><a class="nav__link" href="resume.html">简历</a></li>
-      <li><a class="nav__link" href="index.html#contact">联系</a></li>
-    </ul>
-    <a class="nav__home-btn" href="index.html">首页</a>
-    <button class="nav__burger" aria-label="打开导航菜单" aria-expanded="false">
-      <span></span><span></span><span></span>
-    </button>
+  <!-- ====== 导航栏（仅首页） ====== -->
+  <nav class="nav">
+    <a class="nav__home-btn" href="index.html">🏠 首页</a>
   </nav>
 
-  <div class="nav__mobile-menu" id="mobileMenu">
-    <a class="nav__link" href="index.html">首页</a>
-    <a class="nav__link" href="explore.html">探索</a>
-    <a class="nav__link" href="works.html" target="_blank" rel="noopener">作品</a>
-    <a class="nav__link is-active" href="love-notes.html">♡ 笔记</a>
-    <a class="nav__link" href="resume.html">简历</a>
-    <a class="nav__link" href="index.html#contact">联系</a>
+  <!-- ====== 页眉便签 ====== -->
+  <div class="header-memo" id="headerMemo">
+    <textarea class="header-memo__input" id="headerMemoInput" placeholder="✏️ 在这里写一段话，作为页眉…" rows="2"></textarea>
   </div>
 
   <!-- ====== 仪表盘 ====== -->
@@ -1675,6 +1660,7 @@
       this.bindNav();
       this.bindTabs();
       this.bindModal();
+      this.bindMemo();
       CloudSync.init();
 
       // 始终从云端拉取数据（读取不需要 token，public 仓库 raw URL 直接可用）
@@ -1708,25 +1694,9 @@
 
     // ---- 导航 ----
     bindNav() {
-      const burger = document.querySelector('.nav__burger');
-      const menu = document.getElementById('mobileMenu');
       const nav = document.querySelector('.nav');
-
-      if (burger && menu) {
-        burger.addEventListener('click', () => {
-          const open = burger.classList.toggle('is-open');
-          menu.classList.toggle('is-open', open);
-          burger.setAttribute('aria-expanded', String(open));
-        });
-        menu.querySelectorAll('.nav__link').forEach(link => {
-          link.addEventListener('click', () => {
-            burger.classList.remove('is-open');
-            menu.classList.remove('is-open');
-          });
-        });
-      }
       window.addEventListener('scroll', () => {
-        nav.classList.toggle('is-scrolled', window.scrollY > 100);
+        if (nav) nav.classList.toggle('is-scrolled', window.scrollY > 100);
       }, { passive: true });
 
       // reveal 动画
@@ -1813,6 +1783,26 @@
       if (hEl) hEl.textContent = String(hours).padStart(2, '0');
       if (mEl) mEl.textContent = String(minutes).padStart(2, '0');
       if (sEl) sEl.textContent = String(seconds).padStart(2, '0');
+    },
+
+    // ---- 页眉便签 ----
+    bindMemo() {
+      const input = document.getElementById('headerMemoInput');
+      if (!input) return;
+      // 加载已保存的内容
+      const saved = localStorage.getItem('lovenotes_page_memo');
+      if (saved) input.value = saved;
+      // 自动保存（失焦时）
+      input.addEventListener('blur', () => {
+        localStorage.setItem('lovenotes_page_memo', input.value);
+      });
+      // 每 5 秒自动保存
+      setInterval(() => {
+        const current = localStorage.getItem('lovenotes_page_memo') || '';
+        if (input.value !== current) {
+          localStorage.setItem('lovenotes_page_memo', input.value);
+        }
+      }, 5000);
     },
 
     // ---- 仪表盘 ----
