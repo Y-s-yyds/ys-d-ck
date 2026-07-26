@@ -1,0 +1,2156 @@
+<!DOCTYPE html>
+<!-- ====================================================================
+     恋爱笔记 — 记录每一天
+     功能：日期计时 / 日常记录 / 里程碑 / 喜好档案 / 忌讳清单 /
+           消费流水 / 愿望清单 / 节日提醒 / 冲突复盘
+     配色：粉白浪漫 #fff5f7 / #ff6b9d / #e84393 / #ffffff
+     字体：Inter (Google Fonts)
+     数据：localStorage（预留 Supabase 接口）
+     ==================================================================== -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>恋爱笔记 — 记录每一天</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ========== 全局重置 ========== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      width: 100%;
+      min-height: 100vh;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: linear-gradient(180deg, #fff5f7 0%, #ffe8ef 40%, #fff0f3 100%);
+      background-attachment: fixed;
+      color: #5c3a4a;
+    }
+
+    /* ========== 设计令牌（粉白浪漫主题） ========== */
+    :root {
+      --color-pink: #ff6b9d;
+      --color-pink-deep: #e84393;
+      --color-pink-soft: #ffc0d4;
+      --color-pink-light: #fff0f3;
+      --color-white: #ffffff;
+      --color-text: #5c3a4a;
+      --color-text-light: #8a6a78;
+      --color-muted: rgba(92, 58, 74, 0.5);
+      --color-muted-2: rgba(92, 58, 74, 0.3);
+      --color-card-bg: rgba(255, 255, 255, 0.72);
+      --color-card-border: rgba(255, 107, 157, 0.15);
+      --color-input-bg: rgba(255, 255, 255, 0.9);
+      --color-input-border: rgba(255, 107, 157, 0.25);
+      --color-danger: #e8505b;
+      --color-success: #4ec9a0;
+      --nav-height: 4.5rem;
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+    }
+
+    /* ========== 滚动入场动画 ========== */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+    }
+    .reveal.is-visible { opacity: 1; transform: translateY(0); }
+    .reveal-delay-1 { transition-delay: 0.08s; }
+    .reveal-delay-2 { transition-delay: 0.16s; }
+    .reveal-delay-3 { transition-delay: 0.24s; }
+    .reveal-delay-4 { transition-delay: 0.32s; }
+
+    /* ============================================================
+       导航栏
+       ============================================================ */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      height: var(--nav-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(1.5rem, 4vw, 4rem);
+      background: rgba(255, 245, 248, 0.78);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: background 0.35s ease;
+      border-bottom: 1px solid rgba(255, 107, 157, 0.1);
+    }
+    .nav.is-scrolled { background: rgba(255, 245, 248, 0.95); box-shadow: 0 2px 20px rgba(255,107,157,0.08); }
+
+    .nav__links {
+      display: flex;
+      align-items: center;
+      gap: 2.2rem;
+      list-style: none;
+    }
+    .nav__link {
+      color: var(--color-text);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      transition: color 0.25s ease;
+    }
+    .nav__link:hover { color: var(--color-pink); }
+    .nav__link.is-active { color: var(--color-pink); }
+
+    .nav__home-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.5rem 1.4rem;
+      border: 1.5px solid var(--color-pink);
+      border-radius: 6px;
+      color: var(--color-pink);
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      transition: background 0.25s ease, color 0.25s ease;
+    }
+    .nav__home-btn:hover {
+      background: var(--color-pink);
+      color: var(--color-white);
+    }
+
+    .nav__burger {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      width: 28px;
+      height: 28px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+    }
+    .nav__burger span {
+      display: block;
+      width: 100%;
+      height: 2px;
+      background: var(--color-text);
+      border-radius: 2px;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    .nav__burger.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav__burger.is-open span:nth-child(2) { opacity: 0; }
+    .nav__burger.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    .nav__mobile-menu {
+      display: none;
+      position: fixed;
+      top: var(--nav-height);
+      left: 0; right: 0;
+      background: rgba(255, 245, 248, 0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 2rem 1.5rem;
+      z-index: 99;
+      flex-direction: column;
+      gap: 1.5rem;
+      border-bottom: 1px solid rgba(255, 107, 157, 0.1);
+    }
+    .nav__mobile-menu.is-open { display: flex; }
+    .nav__mobile-menu .nav__link { font-size: 1.1rem; }
+
+    @media (max-width: 768px) {
+      .nav__links { display: none; }
+      .nav__burger { display: flex; }
+    }
+
+    /* ============================================================
+       仪表盘
+       ============================================================ */
+    .dashboard {
+      position: relative;
+      width: 100%;
+      padding: calc(var(--nav-height) + 3rem) 1.5rem 3rem;
+      text-align: center;
+      overflow: hidden;
+      background: radial-gradient(ellipse at 50% 0%, rgba(255,107,157,0.12) 0%, transparent 60%), linear-gradient(180deg, #fff5f7 0%, #ffe4ec 100%);
+    }
+    /* 浮动爱心装饰 */
+    .dashboard::before, .dashboard::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.15;
+      pointer-events: none;
+    }
+    .dashboard::before {
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, var(--color-pink) 0%, transparent 70%);
+      top: -80px; left: -60px;
+    }
+    .dashboard::after {
+      width: 250px; height: 250px;
+      background: radial-gradient(circle, var(--color-pink-soft) 0%, transparent 70%);
+      bottom: -60px; right: -40px;
+    }
+
+    .dashboard__label {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      color: var(--color-pink);
+      margin-bottom: 1.5rem;
+    }
+    .dashboard__label::before {
+      content: '';
+      width: 2rem;
+      height: 1.5px;
+      background: var(--color-pink);
+    }
+
+    .dashboard__day-number {
+      position: relative;
+      font-weight: 800;
+      font-size: clamp(4rem, 14vw, 9rem);
+      line-height: 1;
+      background: linear-gradient(135deg, #ff6b9d 0%, #e84393 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.02em;
+      text-shadow: 0 4px 30px rgba(255,107,157,0.2);
+    }
+    .dashboard__day-suffix {
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
+      color: var(--color-pink-deep);
+      margin-left: 0.3rem;
+      font-weight: 600;
+    }
+
+    .dashboard__since {
+      position: relative;
+      font-weight: 300;
+      font-size: clamp(0.9rem, 2vw, 1.1rem);
+      color: var(--color-text-light);
+      margin-top: 1rem;
+      letter-spacing: 0.04em;
+    }
+
+    .dashboard__cards {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+      margin-top: 2.5rem;
+      max-width: 52rem;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .dashboard__card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-card-border);
+      border-radius: var(--radius-md);
+      padding: 1.4rem 2rem;
+      min-width: 10rem;
+      text-align: center;
+      transition: border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .dashboard__card:hover {
+      border-color: rgba(255,107,157,0.35);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(255,107,157,0.12);
+    }
+
+    .dashboard__card-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: var(--color-muted);
+      margin-bottom: 0.6rem;
+    }
+    .dashboard__card-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ff6b9d 0%, #e84393 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .dashboard__card-sub {
+      font-size: 0.72rem;
+      color: var(--color-muted-2);
+      margin-top: 0.3rem;
+    }
+
+    .dashboard__settings-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 2rem;
+      padding: 0.5rem 1.2rem;
+      background: none;
+      border: 1px solid var(--color-card-border);
+      border-radius: var(--radius-sm);
+      color: var(--color-muted);
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.25s ease, color 0.25s ease;
+    }
+    .dashboard__settings-btn:hover {
+      border-color: var(--color-pink);
+      color: var(--color-pink);
+    }
+
+    /* ============================================================
+       Tab 导航
+       ============================================================ */
+    .tabs {
+      position: sticky;
+      top: var(--nav-height);
+      z-index: 50;
+      display: flex;
+      gap: 0.3rem;
+      padding: 0.6rem 1rem;
+      background: rgba(255, 240, 243, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      border-bottom: 1px solid rgba(255, 107, 157, 0.1);
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+
+    .tab {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.1rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: none;
+      color: var(--color-muted);
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: color 0.2s ease, background 0.2s ease;
+      white-space: nowrap;
+    }
+    .tab:hover { color: var(--color-text); }
+    .tab.is-active {
+      color: var(--color-white);
+      background: linear-gradient(135deg, #ff6b9d 0%, #e84393 100%);
+      box-shadow: 0 4px 15px rgba(255,107,157,0.25);
+    }
+    .tab__icon { font-size: 1rem; }
+
+    /* ============================================================
+       内容区
+       ============================================================ */
+    .content {
+      max-width: 56rem;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      min-height: 50vh;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.is-active { display: block; }
+
+    /* 面板头部 */
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .panel-header__title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--color-text);
+      letter-spacing: 0.02em;
+    }
+    .panel-header__count {
+      font-size: 0.78rem;
+      color: var(--color-muted);
+    }
+
+    /* 添加按钮 */
+    .btn-add {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.2rem;
+      background: linear-gradient(135deg, #ff6b9d 0%, #e84393 100%);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--color-white);
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s var(--ease-out-quart), box-shadow 0.2s ease;
+    }
+    .btn-add:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255,107,157,0.3);
+    }
+
+    /* 统计条 */
+    .stat-bar {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .stat-bar__item {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-card-border);
+      border-radius: var(--radius-sm);
+      padding: 0.7rem 1.2rem;
+      font-size: 0.85rem;
+      color: var(--color-text-light);
+    }
+    .stat-bar__item span { color: var(--color-pink); font-weight: 600; }
+
+    /* ============================================================
+       记录卡片
+       ============================================================ */
+    .record-list { display: flex; flex-direction: column; gap: 0.8rem; }
+
+    .record-card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-card-border);
+      border-radius: var(--radius-md);
+      padding: 1.2rem 1.4rem;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+      position: relative;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .record-card:hover {
+      border-color: rgba(255,107,157,0.3);
+      box-shadow: 0 4px 20px rgba(255,107,157,0.08);
+    }
+
+    .record-card__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .record-card__date {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--color-pink);
+      letter-spacing: 0.04em;
+    }
+    .record-card__day-tag {
+      font-size: 0.68rem;
+      color: var(--color-muted-2);
+      margin-left: 0.5rem;
+    }
+
+    .record-card__actions {
+      display: flex;
+      gap: 0.3rem;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .record-card:hover .record-card__actions { opacity: 1; }
+
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 4px;
+      background: none;
+      color: var(--color-muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: color 0.2s ease, background 0.2s ease;
+    }
+    .icon-btn:hover { color: var(--color-pink); background: rgba(255,107,157,0.08); }
+    .icon-btn--danger:hover { color: var(--color-danger); background: rgba(232,80,91,0.1); }
+
+    .record-card__body {
+      font-size: 0.92rem;
+      font-weight: 400;
+      line-height: 1.65;
+      color: rgba(92, 58, 74, 0.82);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .record-card__title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--color-text);
+      margin-bottom: 0.3rem;
+    }
+
+    .record-card__tag {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.68rem;
+      font-weight: 600;
+      border-radius: 4px;
+      letter-spacing: 0.03em;
+    }
+    .record-card__tag--active {
+      background: rgba(78,201,160,0.15);
+      color: var(--color-success);
+    }
+    .record-card__tag--changed {
+      background: rgba(255,107,157,0.12);
+      color: var(--color-pink);
+    }
+    .record-card__tag--completed {
+      background: rgba(92, 58, 74, 0.08);
+      color: var(--color-muted);
+    }
+    .record-card__tag--milestone {
+      background: rgba(255,107,157,0.12);
+      color: var(--color-pink);
+    }
+
+    .record-card__amount {
+      font-size: 1.3rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ff6b9d 0%, #e84393 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .record-card__changed-note {
+      font-size: 0.72rem;
+      color: var(--color-muted-2);
+      margin-top: 0.4rem;
+      font-style: italic;
+    }
+
+    /* 分组标题 */
+    .group-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--color-pink);
+      letter-spacing: 0.08em;
+      margin: 1.5rem 0 0.8rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--color-card-border);
+    }
+    .group-title:first-child { margin-top: 0; }
+
+    /* ============================================================
+       空状态
+       ============================================================ */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+    }
+    .empty-state__icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.8rem;
+      opacity: 0.3;
+    }
+    .empty-state__text {
+      font-size: 0.9rem;
+      color: var(--color-muted);
+      line-height: 1.6;
+    }
+
+    /* ============================================================
+       弹窗
+       ============================================================ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(92, 58, 74, 0.35);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      padding: 1rem;
+    }
+    .modal-overlay.is-open { opacity: 1; pointer-events: auto; }
+
+    .modal {
+      background: #ffffff;
+      border: 1px solid rgba(255, 107, 157, 0.15);
+      border-radius: var(--radius-lg);
+      padding: 1.8rem;
+      width: 100%;
+      max-width: 30rem;
+      max-height: 85vh;
+      overflow-y: auto;
+      transform: scale(0.95) translateY(10px);
+      transition: transform 0.3s var(--ease-out-expo);
+      box-shadow: 0 20px 60px rgba(255,107,157,0.15);
+      position: relative;
+    }
+    .modal-overlay.is-open .modal { transform: scale(1) translateY(0); }
+
+    .modal__title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--color-text);
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.02em;
+    }
+    .modal__close {
+      position: absolute;
+      top: 1rem;
+      right: 1.2rem;
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(255,107,157,0.08);
+      color: var(--color-muted);
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal__close:hover { background: rgba(255,107,157,0.2); color: var(--color-pink); }
+
+    /* 表单 */
+    .form-group { margin-bottom: 1.2rem; }
+    .form-label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--color-text-light);
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.03em;
+    }
+    .form-label .req { color: var(--color-pink); }
+
+    .form-input,
+    .form-textarea,
+    .form-select {
+      width: 100%;
+      padding: 0.7rem 0.9rem;
+      background: var(--color-input-bg);
+      border: 1px solid var(--color-input-border);
+      border-radius: var(--radius-sm);
+      color: var(--color-text);
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: border-color 0.2s ease;
+      outline: none;
+    }
+    .form-input:focus,
+    .form-textarea:focus,
+    .form-select:focus {
+      border-color: var(--color-pink);
+      box-shadow: 0 0 0 3px rgba(255,107,157,0.1);
+    }
+    .form-input::placeholder,
+    .form-textarea::placeholder { color: rgba(92, 58, 74, 0.25); }
+
+    .form-textarea {
+      min-height: 5rem;
+      resize: vertical;
+      line-height: 1.6;
+    }
+    .form-select {
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23ff6b9d' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.9rem center;
+      padding-right: 2.5rem;
+    }
+    .form-select option {
+      background: #ffffff;
+      color: var(--color-text);
+    }
+
+    .form-row {
+      display: flex;
+      gap: 0.8rem;
+    }
+    .form-row > .form-group { flex: 1; }
+
+    .form-actions {
+      display: flex;
+      gap: 0.8rem;
+      justify-content: flex-end;
+      margin-top: 1.5rem;
+    }
+
+    .btn {
+      padding: 0.6rem 1.5rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn--primary {
+      background: linear-gradient(135deg, #ff6b9d 0%, #e84393 100%);
+      color: var(--color-white);
+    }
+    .btn--primary:hover { box-shadow: 0 6px 20px rgba(255,107,157,0.3); transform: translateY(-1px); }
+    .btn--secondary {
+      background: rgba(92, 58, 74, 0.08);
+      color: var(--color-text-light);
+    }
+    .btn--secondary:hover { color: var(--color-text); background: rgba(92, 58, 74, 0.12); }
+    .btn--danger {
+      background: rgba(232,80,91,0.15);
+      color: var(--color-danger);
+    }
+    .btn--danger:hover { background: rgba(232,80,91,0.25); }
+
+    /* ============================================================
+       Toast 提示
+       ============================================================ */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: linear-gradient(135deg, #ff6b9d 0%, #e84393 100%);
+      color: #fff;
+      padding: 0.7rem 1.5rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 8px 30px rgba(255,107,157,0.3);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      z-index: 9999;
+    }
+    .toast.is-show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast--warning { background: linear-gradient(135deg, #e8505b 0%, #d63a45 100%); }
+
+    /* ============================================================
+       搜索框
+       ============================================================ */
+    .search-box {
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+    .search-box .form-input {
+      padding-left: 2.4rem;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ff6b9d99' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 0.8rem center;
+    }
+
+    /* ============================================================
+       页脚
+       ============================================================ */
+    .footer {
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+      font-size: 0.72rem;
+      font-weight: 300;
+      color: rgba(92, 58, 74, 0.25);
+      letter-spacing: 0.06em;
+      border-top: 1px solid var(--color-card-border);
+    }
+
+    /* ============================================================
+       响应式
+       ============================================================ */
+    @media (max-width: 768px) {
+      .dashboard__cards { flex-direction: column; align-items: center; }
+      .dashboard__card { width: 100%; max-width: 18rem; }
+      .record-card__actions { opacity: 1; }
+      .form-row { flex-direction: column; gap: 0; }
+      .content { padding: 1.5rem 1rem 3rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity: 1; transform: none; transition: none; }
+      html { scroll-behavior: auto; }
+    }
+
+    /* 滚动条 */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,107,157,0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,107,157,0.3); }
+  </style>
+</head>
+<body>
+
+  <!-- ====== 导航栏 ====== -->
+  <nav class="nav" role="navigation" aria-label="主导航">
+    <ul class="nav__links">
+      <li><a class="nav__link" href="index.html">首页</a></li>
+      <li><a class="nav__link" href="explore.html">探索</a></li>
+      <li><a class="nav__link" href="works.html" target="_blank" rel="noopener">作品</a></li>
+      <li><a class="nav__link is-active" href="love-notes.html">♡ 笔记</a></li>
+      <li><a class="nav__link" href="resume.html">简历</a></li>
+      <li><a class="nav__link" href="index.html#contact">联系</a></li>
+    </ul>
+    <a class="nav__home-btn" href="index.html">首页</a>
+    <button class="nav__burger" aria-label="打开导航菜单" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+
+  <div class="nav__mobile-menu" id="mobileMenu">
+    <a class="nav__link" href="index.html">首页</a>
+    <a class="nav__link" href="explore.html">探索</a>
+    <a class="nav__link" href="works.html" target="_blank" rel="noopener">作品</a>
+    <a class="nav__link is-active" href="love-notes.html">♡ 笔记</a>
+    <a class="nav__link" href="resume.html">简历</a>
+    <a class="nav__link" href="index.html#contact">联系</a>
+  </div>
+
+  <!-- ====== 仪表盘 ====== -->
+  <section class="dashboard" id="dashboard">
+    <span class="dashboard__label reveal reveal-delay-1">♡ 恋爱笔记</span>
+    <div class="reveal reveal-delay-2">
+      <span class="dashboard__day-number" id="dayNumber">0</span>
+      <span class="dashboard__day-suffix">天</span>
+    </div>
+    <p class="dashboard__since reveal reveal-delay-3" id="sinceText">请先设置开始日期</p>
+
+    <div class="dashboard__cards reveal reveal-delay-4" id="dashboardCards">
+      <!-- 动态生成倒计时卡片 -->
+    </div>
+
+    <button class="dashboard__settings-btn" onclick="App.openSettings()">
+      ⚙ 设置
+    </button>
+  </section>
+
+  <!-- ====== Tab 导航 ====== -->
+  <nav class="tabs" id="tabNav">
+    <button class="tab is-active" data-tab="daily"><span class="tab__icon">📝</span>日常</button>
+    <button class="tab" data-tab="milestone"><span class="tab__icon">🎯</span>里程碑</button>
+    <button class="tab" data-tab="preference"><span class="tab__icon">❤️</span>喜好</button>
+    <button class="tab" data-tab="taboo"><span class="tab__icon">⚠️</span>忌讳</button>
+    <button class="tab" data-tab="expense"><span class="tab__icon">💰</span>消费</button>
+    <button class="tab" data-tab="wish"><span class="tab__icon">✨</span>愿望</button>
+    <button class="tab" data-tab="holiday"><span class="tab__icon">🎉</span>节日</button>
+    <button class="tab" data-tab="conflict"><span class="tab__icon">🔥</span>复盘</button>
+  </nav>
+
+  <!-- ====== 内容区 ====== -->
+  <main class="content">
+
+    <!-- 日常记录 -->
+    <div class="tab-panel is-active" id="panel-daily">
+      <div class="panel-header">
+        <div>
+          <div class="panel-header__title">📝 日常记录</div>
+          <div class="panel-header__count" id="count-daily"></div>
+        </div>
+        <button class="btn-add" onclick="App.openAdd('daily')">+ 添加记录</button>
+      </div>
+      <div class="record-list" id="list-daily"></div>
+    </div>
+
+    <!-- 里程碑 -->
+    <div class="tab-panel" id="panel-milestone">
+      <div class="panel-header">
+        <div>
+          <div class="panel-header__title">🎯 关系里程碑</div>
+          <div class="panel-header__count" id="count-milestone"></div>
+        </div>
+        <button class="btn-add" onclick="App.openAdd('milestone')">+ 添加里程碑</button>
+      </div>
+      <div class="record-list" id="list-milestone"></div>
+    </div>
+
+    <!-- 喜好档案 -->
+    <div class="tab-panel" id="panel-preference">
+      <div class="panel-header">
+        <div>
+          <div class="panel-header__title">❤️ 喜好档案</div>
+          <div class="panel-header__count" id="count-preference"></div>
+        </div>
+        <button class="btn-add" onclick="App.openAdd('preference')">+ 添加喜好</button>
+      </div>
+      <div class="search-box">
+        <input class="form-input" type="text" id="search-preference" placeholder="搜索喜好..." oninput="App.renderList('preference')">
+      </div>
+      <div id="list-preference"></div>
+    </div>
+
+    <!-- 忌讳清单 -->
+    <div class="tab-panel" id="panel-taboo">
+      <div class="panel-header">
+        <div>
+          <div class="panel-header__title">⚠️ 忌讳清单</div>
+          <div class="panel-header__count" id="count-taboo"></div>
+        </div>
+        <button class="btn-add" onclick="App.openAdd('taboo')">+ 添加忌讳</button>
+      </div>
+      <div class="search-box">
+        <input class="form-input" type="text" id="search-taboo" placeholder="搜索忌讳关键词..." oninput="App.renderList('taboo')">
+      </div>
+      <div class="record-list" id="list-taboo"></div>
+    </div>
+
+    <!-- 消费记录 -->
+    <div class="tab-panel" id="panel-expense">
+      <div class="panel-header">
+        <div>
+          <div class="panel-header__title">💰 消费记录</div>
+          <div class="panel-header__count" id="count-expense"></div>
+        </div>
+        <button class="btn-add" onclick="App.openAdd('expense')">+ 记一笔</button>
+      </div>
+      <div class="stat-bar" id="stat-expense"></div>
+      <div class="record-list" id="list-expense"></div>
+    </div>
+
+    <!-- 愿望清单 -->
+    <div class="tab-panel" id="panel-wish">
+      <div class="panel-header">
+        <div>
+          <div class="panel-header__title">✨ 愿望清单 / 约会计划</div>
+          <div class="panel-header__count" id="count-wish"></div>
+        </div>
+        <button class="btn-add" onclick="App.openAdd('wish')">+ 添加愿望</button>
+      </div>
+      <div id="list-wish"></div>
+    </div>
+
+    <!-- 节日提醒 -->
+    <div class="tab-panel" id="panel-holiday">
+      <div class="panel-header">
+        <div>
+          <div class="panel-header__title">🎉 节日提醒</div>
+          <div class="panel-header__count">提前准备不慌</div>
+        </div>
+        <button class="btn-add" onclick="App.openAdd('holiday')">+ 添加节日</button>
+      </div>
+      <div class="record-list" id="list-holiday"></div>
+    </div>
+
+    <!-- 冲突复盘 -->
+    <div class="tab-panel" id="panel-conflict">
+      <div class="panel-header">
+        <div>
+          <div class="panel-header__title">🔥 冲突复盘</div>
+          <div class="panel-header__count" id="count-conflict"></div>
+        </div>
+        <button class="btn-add" onclick="App.openAdd('conflict')">+ 记录冲突</button>
+      </div>
+      <div class="record-list" id="list-conflict"></div>
+    </div>
+
+  </main>
+
+  <!-- ====== 页脚 ====== -->
+  <footer class="footer">© 2026 恋爱笔记 — 记录每一天 💕</footer>
+
+  <!-- ====== 弹窗：添加/编辑记录 ====== -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modalBox">
+      <button class="modal__close" onclick="App.closeModal()">×</button>
+      <h3 class="modal__title" id="modalTitle">添加记录</h3>
+      <form id="modalForm" onsubmit="return false">
+        <div id="modalFields"></div>
+        <div class="form-actions">
+          <button class="btn btn--secondary" type="button" onclick="App.closeModal()">取消</button>
+          <button class="btn btn--primary" type="submit" onclick="App.saveRecord()">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ====== 弹窗：设置 ====== -->
+  <div class="modal-overlay" id="settingsOverlay">
+    <div class="modal">
+      <button class="modal__close" onclick="App.closeSettings()">×</button>
+      <h3 class="modal__title">⚙ 设置</h3>
+      <div class="form-group">
+        <label class="form-label">恋爱开始日期 <span class="req">*</span></label>
+        <input class="form-input" type="date" id="setStartDate">
+      </div>
+      <div class="form-group">
+        <label class="form-label">对方生日 <span class="req">*</span></label>
+        <input class="form-input" type="date" id="setBirthday">
+      </div>
+      <div class="form-group">
+        <label class="form-label">对方昵称（可选）</label>
+        <input class="form-input" type="text" id="setNickname" placeholder="给TA起个称呼">
+      </div>
+      <hr style="border:none;border-top:1px solid var(--color-card-border);margin:1.5rem 0">
+      <div class="form-group">
+        <label class="form-label">数据管理</label>
+        <div style="display:flex;gap:0.6rem;flex-wrap:wrap">
+          <button class="btn btn--secondary" type="button" onclick="App.exportData()">导出备份</button>
+          <button class="btn btn--secondary" type="button" onclick="App.importData()">导入备份</button>
+          <button class="btn btn--danger" type="button" onclick="App.clearData()">清空全部</button>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn--primary" type="button" onclick="App.saveSettings()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== Toast ====== -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ====== 隐藏文件上传 ====== -->
+  <input type="file" id="fileInput" accept=".json" style="display:none">
+
+  <!-- ====== 脚本 ====== -->
+  <script>
+  /*
+   * ============================================================
+   *  数据层 — localStorage（预留 Supabase 接口）
+   * ============================================================
+   */
+  const DB = {
+    prefix: 'lovenotes_',
+
+    getSettings() {
+      try { return JSON.parse(localStorage.getItem(this.prefix + 'settings')) || null; }
+      catch(e) { return null; }
+    },
+    setSettings(s) {
+      localStorage.setItem(this.prefix + 'settings', JSON.stringify(s));
+    },
+    getAll(key) {
+      try { return JSON.parse(localStorage.getItem(this.prefix + key)) || []; }
+      catch(e) { return []; }
+    },
+    save(key, data) {
+      localStorage.setItem(this.prefix + key, JSON.stringify(data));
+    },
+    add(key, item) {
+      const list = this.getAll(key);
+      item.id = Date.now().toString() + Math.random().toString(36).slice(2, 6);
+      item.createdAt = new Date().toISOString();
+      list.unshift(item);
+      this.save(key, list);
+      return item;
+    },
+    update(key, id, updates) {
+      const list = this.getAll(key);
+      const item = list.find(i => i.id === id);
+      if (item) { Object.assign(item, updates); this.save(key, list); }
+      return item;
+    },
+    delete(key, id) {
+      const list = this.getAll(key).filter(i => i.id !== id);
+      this.save(key, list);
+    }
+  };
+
+  /*
+   * ============================================================
+   *  常量
+   * ============================================================
+   */
+  const MILESTONE_PRESETS = [
+    '表白', '确定关系', '第一次牵手', '第一次拥抱', '第一次接吻',
+    '第一次约会', '第一次旅行', '见家长', '求婚', '登记结婚',
+    '其他（自定义）'
+  ];
+
+  const PREF_CATEGORIES = [
+    '食物', '饮品', '水果', '零食', '颜色', '音乐',
+    '电影', '电视剧', '游戏', '运动', '花卉', '动物',
+    '穿衣风格', '香水气味', '旅游目的地', '其他'
+  ];
+
+  // 固定日期的节日（公历）
+  const HOLIDAY_PRESETS = [
+    { name: '元旦', month: 1, day: 1 },
+    { name: '情人节', month: 2, day: 14 },
+    { name: '女神节', month: 3, day: 8 },
+    { name: '白色情人节', month: 3, day: 14 },
+    { name: '520情人节', month: 5, day: 20 },
+    { name: '521情人节', month: 5, day: 21 },
+    { name: '万圣节', month: 10, day: 31 },
+    { name: '平安夜', month: 12, day: 24 },
+    { name: '圣诞节', month: 12, day: 25 },
+  ];
+
+  // 农历节日 — 每年公历日期不同，预存 2024~2034 年的日期
+  const LUNAR_HOLIDAYS = {
+    '春节': {
+      2024: '2024-02-10', 2025: '2025-01-29', 2026: '2026-02-17',
+      2027: '2027-02-06', 2028: '2028-01-26', 2029: '2029-02-13',
+      2030: '2030-02-03', 2031: '2031-01-23', 2032: '2032-02-11',
+      2033: '2033-01-31', 2034: '2034-02-19'
+    },
+    '元宵节': {
+      2024: '2024-02-24', 2025: '2025-02-12', 2026: '2026-03-03',
+      2027: '2027-02-20', 2028: '2028-02-09', 2029: '2029-02-27',
+      2030: '2030-02-17', 2031: '2031-02-06', 2032: '2032-02-25',
+      2033: '2033-02-14', 2034: '2034-03-04'
+    },
+    '七夕节': {
+      2024: '2024-08-10', 2025: '2025-08-29', 2026: '2026-08-19',
+      2027: '2027-08-08', 2028: '2028-08-26', 2029: '2029-08-15',
+      2030: '2030-08-04', 2031: '2031-08-23', 2032: '2032-08-11',
+      2033: '2033-08-30', 2034: '2034-08-19'
+    },
+    '中秋节': {
+      2024: '2024-09-17', 2025: '2025-10-06', 2026: '2026-09-25',
+      2027: '2027-09-15', 2028: '2028-10-03', 2029: '2029-09-22',
+      2030: '2030-09-12', 2031: '2031-10-01', 2032: '2032-09-19',
+      2033: '2033-10-08', 2034: '2034-09-27'
+    },
+    '除夕': {
+      2024: '2024-02-09', 2025: '2025-01-28', 2026: '2026-02-16',
+      2027: '2027-02-05', 2028: '2028-01-25', 2029: '2029-02-12',
+      2030: '2030-02-02', 2031: '2031-01-22', 2032: '2032-02-10',
+      2033: '2033-01-30', 2034: '2034-02-18'
+    }
+  };
+
+  // 农历节日名称列表（用于生成预设）
+  const LUNAR_HOLIDAY_NAMES = Object.keys(LUNAR_HOLIDAYS);
+
+  const MILESTONE_DAYS = [7, 14, 30, 60, 100, 200, 300, 365, 500, 730, 1000, 1095, 1460, 1825, 3650];
+
+  /*
+   * ============================================================
+   *  工具函数
+   * ============================================================
+   */
+  const Util = {
+    today() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    },
+    formatDate(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+    },
+    formatDateShort(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      return `${d.getMonth()+1}/${d.getDate()}`;
+    },
+    daysBetween(from, to) {
+      const diff = new Date(to) - new Date(from);
+      return Math.floor(diff / 86400000);
+    },
+    daysSince(dateStr) {
+      return this.daysBetween(dateStr, new Date());
+    },
+    daysUntil(dateStr) {
+      return this.daysBetween(new Date(), dateStr);
+    },
+    getNextBirthday(birthdayStr) {
+      if (!birthdayStr) return null;
+      const today = new Date();
+      const bd = new Date(birthdayStr);
+      let next = new Date(today.getFullYear(), bd.getMonth(), bd.getDate());
+      if (next < today) next = new Date(today.getFullYear() + 1, bd.getMonth(), bd.getDate());
+      return next;
+    },
+    getNextMilestone(startDateStr) {
+      const days = this.daysSince(startDateStr);
+      for (const ms of MILESTONE_DAYS) {
+        if (ms > days) return { days: ms, remaining: ms - days };
+      }
+      return null;
+    },
+    getDayTag(dateStr, startDateStr) {
+      if (!startDateStr || !dateStr) return '';
+      const day = this.daysBetween(startDateStr, dateStr);
+      if (day < 0) return '';
+      return `第${day}天`;
+    },
+    escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+  };
+
+  /*
+   * ============================================================
+   *  Toast
+   * ============================================================
+   */
+  function showToast(msg, type) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast' + (type === 'warning' ? ' toast--warning' : '');
+    el.classList.add('is-show');
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => el.classList.remove('is-show'), 2500);
+  }
+
+  /*
+   * ============================================================
+   *  主应用
+   * ============================================================
+   */
+  const App = {
+    currentTab: 'daily',
+    editingType: null,
+    editingId: null,
+
+    init() {
+      this.bindNav();
+      this.bindTabs();
+      this.bindModal();
+      this.renderAll();
+
+      // 首次访问 → 打开设置
+      const settings = DB.getSettings();
+      if (!settings || !settings.startDate) {
+        this.openSettings();
+      }
+    },
+
+    // ---- 导航 ----
+    bindNav() {
+      const burger = document.querySelector('.nav__burger');
+      const menu = document.getElementById('mobileMenu');
+      const nav = document.querySelector('.nav');
+
+      if (burger && menu) {
+        burger.addEventListener('click', () => {
+          const open = burger.classList.toggle('is-open');
+          menu.classList.toggle('is-open', open);
+          burger.setAttribute('aria-expanded', String(open));
+        });
+        menu.querySelectorAll('.nav__link').forEach(link => {
+          link.addEventListener('click', () => {
+            burger.classList.remove('is-open');
+            menu.classList.remove('is-open');
+          });
+        });
+      }
+      window.addEventListener('scroll', () => {
+        nav.classList.toggle('is-scrolled', window.scrollY > 100);
+      }, { passive: true });
+
+      // reveal 动画
+      if ('IntersectionObserver' in window) {
+        const obs = new IntersectionObserver(entries => {
+          entries.forEach(e => {
+            if (e.isIntersecting) {
+              e.target.classList.add('is-visible');
+              obs.unobserve(e.target);
+            }
+          });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+      } else {
+        document.querySelectorAll('.reveal').forEach(el => el.classList.add('is-visible'));
+      }
+    },
+
+    // ---- Tab 切换 ----
+    bindTabs() {
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          this.switchTab(tab.dataset.tab);
+        });
+      });
+    },
+    switchTab(name) {
+      this.currentTab = name;
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === name));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('is-active', p.id === 'panel-' + name));
+    },
+
+    // ---- 弹窗 ----
+    bindModal() {
+      document.getElementById('modalOverlay').addEventListener('click', e => {
+        if (e.target === e.currentTarget) this.closeModal();
+      });
+      document.getElementById('settingsOverlay').addEventListener('click', e => {
+        if (e.target === e.currentTarget) this.closeSettings();
+      });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { this.closeModal(); this.closeSettings(); }
+      });
+    },
+
+    // ---- 渲染所有 ----
+    renderAll() {
+      this.renderDashboard();
+      ['daily','milestone','preference','taboo','expense','wish','holiday','conflict'].forEach(t => {
+        this.renderList(t);
+      });
+    },
+
+    // ---- 仪表盘 ----
+    renderDashboard() {
+      const s = DB.getSettings();
+      const dayEl = document.getElementById('dayNumber');
+      const sinceEl = document.getElementById('sinceText');
+      const cardsEl = document.getElementById('dashboardCards');
+
+      if (!s || !s.startDate) {
+        dayEl.textContent = '0';
+        sinceEl.textContent = '请先设置开始日期';
+        cardsEl.innerHTML = '';
+        return;
+      }
+
+      const days = Util.daysSince(s.startDate);
+      dayEl.textContent = days;
+      const name = s.nickname ? `和 ${s.nickname} 在一起` : '在一起';
+      sinceEl.textContent = `${name} · 自 ${Util.formatDate(s.startDate)}`;
+
+      // 倒计时卡片
+      const cards = [];
+
+      // 下一个里程碑
+      const ms = Util.getNextMilestone(s.startDate);
+      if (ms) {
+        cards.push(`
+          <div class="dashboard__card">
+            <div class="dashboard__card-label">下一个里程碑</div>
+            <div class="dashboard__card-value">${ms.remaining}</div>
+            <div class="dashboard__card-sub">天后 · 第${ms.days}天</div>
+          </div>
+        `);
+      }
+
+      // 生日倒计时
+      if (s.birthday) {
+        const nextBd = Util.getNextBirthday(s.birthday);
+        const bdDays = Util.daysUntil(nextBd);
+        const age = new Date(nextBd).getFullYear() - new Date(s.birthday).getFullYear();
+        cards.push(`
+          <div class="dashboard__card">
+            <div class="dashboard__card-label">${s.nickname || 'TA'}的生日</div>
+            <div class="dashboard__card-value">${bdDays}</div>
+            <div class="dashboard__card-sub">天后 · ${Util.formatDateShort(nextBd)} · ${age}岁</div>
+          </div>
+        `);
+      }
+
+      // 下一个节日
+      const holidays = DB.getAll('holiday');
+      const presetHolidays = this._getPresetHolidays(s);
+      const allHolidays = [...presetHolidays, ...holidays.filter(h => !h.preset)];
+      let nextHoliday = null;
+      let nextHolidayDays = Infinity;
+      allHolidays.forEach(h => {
+        const next = this._getNextHolidayDate(h);
+        if (next) {
+          const d = Util.daysUntil(next);
+          if (d >= 0 && d < nextHolidayDays) {
+            nextHolidayDays = d;
+            nextHoliday = { name: h.name, date: next };
+          }
+        }
+      });
+      if (nextHoliday) {
+        cards.push(`
+          <div class="dashboard__card">
+            <div class="dashboard__card-label">下一个节日</div>
+            <div class="dashboard__card-value">${nextHolidayDays}</div>
+            <div class="dashboard__card-sub">天后 · ${nextHoliday.name}</div>
+          </div>
+        `);
+      }
+
+      cardsEl.innerHTML = cards.join('');
+    },
+
+    _getPresetHolidays(settings) {
+      const list = HOLIDAY_PRESETS.map(h => ({ ...h, preset: true }));
+      // 添加农历节日
+      LUNAR_HOLIDAY_NAMES.forEach(name => {
+        list.push({ name, lunar: true, preset: true });
+      });
+      if (settings.birthday) {
+        const bd = new Date(settings.birthday);
+        list.push({ name: (settings.nickname || 'TA') + '的生日', month: bd.getMonth()+1, day: bd.getDate(), preset: true, isBirthday: true });
+      }
+      return list;
+    },
+
+    _getNextHolidayDate(h) {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      // 农历节日 — 查表
+      if (h.lunar) {
+        const dates = LUNAR_HOLIDAYS[h.name];
+        if (!dates) return null;
+        const year = today.getFullYear();
+        // 先看今年
+        if (dates[year]) {
+          const d = new Date(dates[year]);
+          if (d >= today) return d;
+        }
+        // 再看明年
+        if (dates[year + 1]) return new Date(dates[year + 1]);
+        return null;
+      }
+
+      // 固定日期节日（公历）
+      let next = new Date(today.getFullYear(), h.month - 1, h.day);
+      if (next < today) next = new Date(today.getFullYear() + 1, h.month - 1, h.day);
+      return next;
+    },
+
+    // ---- 列表渲染 ----
+    renderList(type) {
+      const list = DB.getAll(type);
+      const container = document.getElementById('list-' + type);
+      const countEl = document.getElementById('count-' + type);
+
+      if (countEl) {
+        if (type === 'expense') {
+          const total = list.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+          countEl.textContent = `共 ${list.length} 笔 · 合计 ¥${total.toFixed(2)}`;
+        } else {
+          countEl.textContent = `共 ${list.length} 条`;
+        }
+      }
+
+      if (type === 'expense') {
+        const total = list.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+        const statEl = document.getElementById('stat-expense');
+        const thisMonth = list.filter(i => i.date && i.date.startsWith(Util.today().slice(0,7)));
+        const monthTotal = thisMonth.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+        statEl.innerHTML = `
+          <div class="stat-bar__item">总计 <span>¥${total.toFixed(2)}</span></div>
+          <div class="stat-bar__item">本月 <span>¥${monthTotal.toFixed(2)}</span></div>
+        `;
+      }
+
+      if (type === 'preference') {
+        this._renderPreferences(list, container);
+        return;
+      }
+      if (type === 'wish') {
+        this._renderWishes(list, container);
+        return;
+      }
+      if (type === 'holiday') {
+        this._renderHolidays(list, container);
+        return;
+      }
+
+      // 通用列表渲染
+      const searchTerm = document.getElementById('search-' + type)?.value?.toLowerCase() || '';
+      const filtered = searchTerm
+        ? list.filter(i => JSON.stringify(i).toLowerCase().includes(searchTerm))
+        : list;
+
+      if (filtered.length === 0) {
+        container.innerHTML = this._emptyHTML(type);
+        return;
+      }
+
+      const settings = DB.getSettings();
+      container.innerHTML = filtered.map(item => this._renderCard(type, item, settings)).join('');
+    },
+
+    _emptyHTML(type) {
+      const labels = {
+        daily: '还没有日常记录', milestone: '还没有里程碑',
+        preference: '还没有喜好记录', taboo: '还没有忌讳记录',
+        expense: '还没有消费记录', wish: '愿望清单是空的',
+        holiday: '还没有自定义节日', conflict: '还没有冲突记录'
+      };
+      return `<div class="empty-state"><div class="empty-state__icon">💕</div><div class="empty-state__text">${labels[type] || '暂无数据'}<br>点击右上角按钮开始记录</div></div>`;
+    },
+
+    _renderCard(type, item, settings) {
+      const date = item.date || '';
+      const dayTag = settings ? Util.getDayTag(date, settings.startDate) : '';
+      const dateHTML = date ? `<div class="record-card__date">${Util.formatDate(date)} <span class="record-card__day-tag">${dayTag}</span></div>` : '';
+
+      if (type === 'daily') {
+        return `
+          <div class="record-card">
+            <div class="record-card__header">
+              ${dateHTML}
+              <div class="record-card__actions">
+                <button class="icon-btn" onclick="App.openEdit('daily','${item.id}')" title="编辑">✎</button>
+                <button class="icon-btn icon-btn--danger" onclick="App.confirmDelete('daily','${item.id}')" title="删除">🗑</button>
+              </div>
+            </div>
+            <div class="record-card__body">${Util.escapeHtml(item.content)}</div>
+          </div>`;
+      }
+
+      if (type === 'milestone') {
+        return `
+          <div class="record-card">
+            <div class="record-card__header">
+              <div>
+                <span class="record-card__tag record-card__tag--milestone">🎯 ${Util.escapeHtml(item.title)}</span>
+                <span class="record-card__date" style="margin-left:0.6rem">${date ? Util.formatDate(date) : ''} <span class="record-card__day-tag">${dayTag}</span></span>
+              </div>
+              <div class="record-card__actions">
+                <button class="icon-btn" onclick="App.openEdit('milestone','${item.id}')" title="编辑">✎</button>
+                <button class="icon-btn icon-btn--danger" onclick="App.confirmDelete('milestone','${item.id}')" title="删除">🗑</button>
+              </div>
+            </div>
+            ${item.description ? `<div class="record-card__body">${Util.escapeHtml(item.description)}</div>` : ''}
+          </div>`;
+      }
+
+      if (type === 'taboo') {
+        return `
+          <div class="record-card">
+            <div class="record-card__header">
+              <div class="record-card__title">⚠️ ${Util.escapeHtml(item.content)}</div>
+              <div class="record-card__actions">
+                <button class="icon-btn" onclick="App.openEdit('taboo','${item.id}')" title="编辑">✎</button>
+                <button class="icon-btn icon-btn--danger" onclick="App.confirmDelete('taboo','${item.id}')" title="删除">🗑</button>
+              </div>
+            </div>
+            ${item.tags ? `<div class="record-card__body" style="font-size:0.8rem;color:var(--color-muted)">标签：${Util.escapeHtml(item.tags)}</div>` : ''}
+          </div>`;
+      }
+
+      if (type === 'expense') {
+        return `
+          <div class="record-card">
+            <div class="record-card__header">
+              <div>
+                ${dateHTML}
+                ${item.note ? `<div class="record-card__body" style="margin-top:0.3rem;font-size:0.85rem">${Util.escapeHtml(item.note)}</div>` : ''}
+              </div>
+              <div style="display:flex;align-items:center;gap:0.8rem">
+                <span class="record-card__amount">¥${parseFloat(item.amount).toFixed(2)}</span>
+                <div class="record-card__actions">
+                  <button class="icon-btn" onclick="App.openEdit('expense','${item.id}')" title="编辑">✎</button>
+                  <button class="icon-btn icon-btn--danger" onclick="App.confirmDelete('expense','${item.id}')" title="删除">🗑</button>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      if (type === 'conflict') {
+        return `
+          <div class="record-card">
+            <div class="record-card__header">
+              ${dateHTML}
+              <div class="record-card__actions">
+                <button class="icon-btn" onclick="App.openEdit('conflict','${item.id}')" title="编辑">✎</button>
+                <button class="icon-btn icon-btn--danger" onclick="App.confirmDelete('conflict','${item.id}')" title="删除">🗑</button>
+              </div>
+            </div>
+            ${item.cause ? `<div class="record-card__title">起因：${Util.escapeHtml(item.cause)}</div>` : ''}
+            ${item.description ? `<div class="record-card__body">${Util.escapeHtml(item.description)}</div>` : ''}
+            ${item.resolution ? `<div class="record-card__body" style="margin-top:0.6rem;color:var(--color-success)">解决：${Util.escapeHtml(item.resolution)}</div>` : ''}
+            ${item.lessons ? `<div class="record-card__body" style="margin-top:0.4rem;color:var(--color-pink);font-size:0.82rem">💡 ${Util.escapeHtml(item.lessons)}</div>` : ''}
+          </div>`;
+      }
+
+      return '';
+    },
+
+    // ---- 喜好渲染（分组：当前 / 已变更）----
+    _renderPreferences(list, container) {
+      const searchTerm = document.getElementById('search-preference')?.value?.toLowerCase() || '';
+      const filtered = searchTerm
+        ? list.filter(i => JSON.stringify(i).toLowerCase().includes(searchTerm))
+        : list;
+
+      const active = filtered.filter(i => i.status !== 'changed');
+      const changed = filtered.filter(i => i.status === 'changed');
+
+      // 按分类分组
+      const groupBy = (items) => {
+        const groups = {};
+        items.forEach(i => {
+          const cat = i.category || '其他';
+          if (!groups[cat]) groups[cat] = [];
+          groups[cat].push(i);
+        });
+        return groups;
+      };
+
+      let html = '';
+
+      if (active.length === 0 && changed.length === 0) {
+        container.innerHTML = this._emptyHTML('preference');
+        return;
+      }
+
+      if (active.length > 0) {
+        html += '<div class="group-title">当前喜好</div><div class="record-list">';
+        const groups = groupBy(active);
+        Object.entries(groups).forEach(([cat, items]) => {
+          html += `<div class="record-card"><div class="record-card__header"><div class="record-card__title">${Util.escapeHtml(cat)}</div></div>`;
+          items.forEach(i => {
+            html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid rgba(255,107,157,0.06)">
+              <span style="font-size:0.9rem;color:var(--color-text)">${Util.escapeHtml(i.value)}</span>
+              <div style="display:flex;gap:0.4rem;align-items:center">
+                ${i.note ? `<span style="font-size:0.75rem;color:var(--color-muted)">${Util.escapeHtml(i.note)}</span>` : ''}
+                <button class="icon-btn" onclick="App.markPreferenceChanged('${i.id}')" title="标记为已变更" style="font-size:0.75rem">↻ 变更</button>
+                <button class="icon-btn icon-btn--danger" onclick="App.confirmDelete('preference','${i.id}')" title="删除">🗑</button>
+              </div>
+            </div>`;
+          });
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
+      if (changed.length > 0) {
+        html += '<div class="group-title">已变更（历史记录）</div><div class="record-list">';
+        changed.forEach(i => {
+          html += `<div class="record-card">
+            <div class="record-card__header">
+              <div>
+                <span class="record-card__tag record-card__tag--changed">已变更</span>
+                <span style="margin-left:0.6rem;font-size:0.85rem;color:var(--color-muted)">${Util.escapeHtml(i.category || '其他')}</span>
+              </div>
+              <div class="record-card__actions">
+                <button class="icon-btn icon-btn--danger" onclick="App.confirmDelete('preference','${i.id}')" title="删除">🗑</button>
+              </div>
+            </div>
+            <div class="record-card__body">${Util.escapeHtml(i.value)}</div>
+            <div class="record-card__changed-note">变更于 ${Util.formatDate(i.changedDate || i.createdAt)}</div>
+          </div>`;
+        });
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+    },
+
+    markPreferenceChanged(id) {
+      const newVal = prompt('输入新的喜好值（留空则仅标记为已变更）：');
+      if (newVal === null) return;
+      DB.update('preference', id, { status: 'changed', changedDate: Util.today() });
+      if (newVal.trim()) {
+        const old = DB.getAll('preference').find(i => i.id === id);
+        DB.add('preference', {
+          category: old?.category || '其他',
+          value: newVal.trim(),
+          status: 'active',
+          note: ''
+        });
+        showToast('已更新喜好记录');
+      } else {
+        showToast('已标记为变更', 'warning');
+      }
+      this.renderList('preference');
+    },
+
+    // ---- 愿望渲染（待完成 / 已完成）----
+    _renderWishes(list, container) {
+      const pending = list.filter(i => !i.completed);
+      const done = list.filter(i => i.completed);
+
+      if (list.length === 0) {
+        container.innerHTML = this._emptyHTML('wish');
+        return;
+      }
+
+      let html = '';
+
+      if (pending.length > 0) {
+        html += '<div class="group-title">待完成</div><div class="record-list">';
+        pending.forEach(i => {
+          const dayTag = i.targetDate ? ` · 目标 ${Util.formatDateShort(i.targetDate)}` : '';
+          html += `<div class="record-card">
+            <div class="record-card__header">
+              <div class="record-card__title">✨ ${Util.escapeHtml(i.title)}</div>
+              <div class="record-card__actions">
+                <button class="icon-btn" onclick="App.completeWish('${i.id}')" title="标记完成" style="color:var(--color-success)">✓</button>
+                <button class="icon-btn" onclick="App.openEdit('wish','${i.id}')" title="编辑">✎</button>
+                <button class="icon-btn icon-btn--danger" onclick="App.confirmDelete('wish','${i.id}')" title="删除">🗑</button>
+              </div>
+            </div>
+            ${i.description ? `<div class="record-card__body">${Util.escapeHtml(i.description)}</div>` : ''}
+            ${dayTag ? `<div style="font-size:0.75rem;color:var(--color-muted);margin-top:0.3rem">${dayTag}</div>` : ''}
+          </div>`;
+        });
+        html += '</div>';
+      }
+
+      if (done.length > 0) {
+        html += '<div class="group-title">已完成</div><div class="record-list">';
+        done.forEach(i => {
+          html += `<div class="record-card" style="opacity:0.6">
+            <div class="record-card__header">
+              <div>
+                <span class="record-card__tag record-card__tag--completed">✓ 已完成</span>
+                <span style="margin-left:0.6rem;font-size:0.9rem;text-decoration:line-through">${Util.escapeHtml(i.title)}</span>
+              </div>
+              <div class="record-card__actions">
+                <button class="icon-btn icon-btn--danger" onclick="App.confirmDelete('wish','${i.id}')" title="删除">🗑</button>
+              </div>
+            </div>
+          </div>`;
+        });
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+    },
+
+    completeWish(id) {
+      DB.update('wish', id, { completed: true, completedAt: Util.today() });
+      showToast('已完成！🎉');
+      this.renderList('wish');
+    },
+
+    // ---- 节日渲染（按倒计时排序）----
+    _renderHolidays(customList, container) {
+      const settings = DB.getSettings();
+      const preset = this._getPresetHolidays(settings || {});
+      const all = [...preset, ...customList];
+
+      if (all.length === 0) {
+        container.innerHTML = this._emptyHTML('holiday');
+        return;
+      }
+
+      const withDays = all.map(h => {
+        const next = this._getNextHolidayDate(h);
+        const days = next ? Util.daysUntil(next) : Infinity;
+        return { ...h, nextDate: next, days };
+      }).sort((a, b) => a.days - b.days);
+
+      let html = '<div class="record-list">';
+      withDays.forEach(h => {
+        const isCustom = !h.preset;
+        const urgent = h.days <= 7;
+        const dateStr = h.nextDate ? Util.formatDateShort(h.nextDate) : '日期待定';
+        const lunarTag = h.lunar ? ' <span style="font-size:0.65rem;opacity:0.6">农历</span>' : '';
+        html += `<div class="record-card" ${urgent ? 'style="border-color:rgba(255,107,157,0.35);box-shadow:0 4px 20px rgba(255,107,157,0.1)"' : ''}>
+          <div class="record-card__header">
+            <div style="display:flex;align-items:center;gap:0.6rem">
+              <span style="font-size:1.1rem">${urgent ? '🔔' : '🎉'}</span>
+              <div>
+                <div class="record-card__title">${Util.escapeHtml(h.name)}${lunarTag}</div>
+                <div style="font-size:0.72rem;color:var(--color-muted)">${dateStr}</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.8rem">
+              <span class="record-card__amount">${h.days}</span>
+              <span style="font-size:0.75rem;color:var(--color-muted)">天后</span>
+              ${isCustom ? `<div class="record-card__actions"><button class="icon-btn icon-btn--danger" onclick="App.confirmDelete('holiday','${h.id}')" title="删除">🗑</button></div>` : ''}
+            </div>
+          </div>
+          ${h.giftSuggestion ? `<div class="record-card__body" style="font-size:0.82rem;color:var(--color-pink)">🎁 ${Util.escapeHtml(h.giftSuggestion)}</div>` : ''}
+        </div>`;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    },
+
+    // ---- 添加/编辑弹窗 ----
+    openAdd(type) {
+      this.editingType = type;
+      this.editingId = null;
+      this._renderForm(type, null);
+      document.getElementById('modalTitle').textContent = this._formTitle(type, false);
+      document.getElementById('modalOverlay').classList.add('is-open');
+    },
+
+    openEdit(type, id) {
+      const item = DB.getAll(type).find(i => i.id === id);
+      if (!item) return;
+      this.editingType = type;
+      this.editingId = id;
+      this._renderForm(type, item);
+      document.getElementById('modalTitle').textContent = this._formTitle(type, true);
+      document.getElementById('modalOverlay').classList.add('is-open');
+    },
+
+    _formTitle(type, isEdit) {
+      const titles = {
+        daily: '日常记录', milestone: '里程碑', preference: '喜好',
+        taboo: '忌讳', expense: '消费记录', wish: '愿望',
+        holiday: '节日', conflict: '冲突复盘'
+      };
+      return (isEdit ? '编辑' : '添加') + titles[type];
+    },
+
+    _renderForm(type, item) {
+      const fields = document.getElementById('modalFields');
+      const today = Util.today();
+      const val = (key) => item ? (item[key] || '') : '';
+      const defaultDate = val('date') || today;
+
+      if (type === 'daily') {
+        fields.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">日期 <span class="req">*</span></label>
+            <input class="form-input" type="date" id="f_date" value="${defaultDate}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">内容 <span class="req">*</span></label>
+            <textarea class="form-textarea" id="f_content" placeholder="今天发生了什么..." required>${val('content')}</textarea>
+          </div>`;
+      }
+      else if (type === 'milestone') {
+        fields.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">日期 <span class="req">*</span></label>
+            <input class="form-input" type="date" id="f_date" value="${defaultDate}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">里程碑 <span class="req">*</span></label>
+            <select class="form-select" id="f_title" onchange="App._checkCustomMilestone(this)">
+              ${MILESTONE_PRESETS.map(p => `<option value="${p}" ${val('title')===p?'selected':''}>${p}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" id="customTitleGroup" style="display:none">
+            <label class="form-label">自定义名称</label>
+            <input class="form-input" type="text" id="f_customTitle" placeholder="输入里程碑名称">
+          </div>
+          <div class="form-group">
+            <label class="form-label">描述</label>
+            <textarea class="form-textarea" id="f_description" placeholder="记录这一刻的感受...">${val('description')}</textarea>
+          </div>`;
+        if (val('title') && !MILESTONE_PRESETS.includes(val('title'))) {
+          this._checkCustomMilestone(document.getElementById('f_title'));
+          document.getElementById('f_customTitle').value = val('title');
+        }
+      }
+      else if (type === 'preference') {
+        fields.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">分类 <span class="req">*</span></label>
+            <select class="form-select" id="f_category">
+              ${PREF_CATEGORIES.map(c => `<option value="${c}" ${val('category')===c?'selected':''}>${c}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">喜好内容 <span class="req">*</span></label>
+            <input class="form-input" type="text" id="f_value" placeholder="如：草莓蛋糕" value="${val('value')}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">备注（可选）</label>
+            <input class="form-input" type="text" id="f_note" placeholder="如：特别喜欢吃" value="${val('note')}">
+          </div>`;
+      }
+      else if (type === 'taboo') {
+        fields.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">忌讳内容 <span class="req">*</span></label>
+            <textarea class="form-textarea" id="f_content" placeholder="如：不吃香菜" required>${val('content')}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">标签/关键词（可选，逗号分隔）</label>
+            <input class="form-input" type="text" id="f_tags" placeholder="如：食物, 饮食" value="${val('tags')}">
+          </div>`;
+      }
+      else if (type === 'expense') {
+        fields.innerHTML = `
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">金额 <span class="req">*</span></label>
+              <input class="form-input" type="number" id="f_amount" step="0.01" placeholder="0.00" value="${val('amount')}" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">日期 <span class="req">*</span></label>
+              <input class="form-input" type="date" id="f_date" value="${defaultDate}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">备注（可选）</label>
+            <input class="form-input" type="text" id="f_note" placeholder="如：晚餐" value="${val('note')}">
+          </div>`;
+      }
+      else if (type === 'wish') {
+        fields.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">愿望/计划 <span class="req">*</span></label>
+            <input class="form-input" type="text" id="f_title" placeholder="如：一起去看极光" value="${val('title')}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">描述（可选）</label>
+            <textarea class="form-textarea" id="f_description" placeholder="详细描述...">${val('description')}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">目标日期（可选）</label>
+            <input class="form-input" type="date" id="f_targetDate" value="${val('targetDate')}">
+          </div>`;
+      }
+      else if (type === 'holiday') {
+        fields.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">节日名称 <span class="req">*</span></label>
+            <input class="form-input" type="text" id="f_name" placeholder="如：相识纪念日" value="${val('name')}" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">月份 <span class="req">*</span></label>
+              <select class="form-select" id="f_month">
+                ${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${val('month')==i+1?'selected':''}>${i+1}月</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">日期 <span class="req">*</span></label>
+              <select class="form-select" id="f_day">
+                ${Array.from({length:31},(_,i)=>`<option value="${i+1}" ${val('day')==i+1?'selected':''}>${i+1}日</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">礼物建议（可选）</label>
+            <input class="form-input" type="text" id="f_giftSuggestion" placeholder="如：口红/手表" value="${val('giftSuggestion')}">
+          </div>`;
+      }
+      else if (type === 'conflict') {
+        fields.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">日期 <span class="req">*</span></label>
+            <input class="form-input" type="date" id="f_date" value="${defaultDate}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">起因</label>
+            <input class="form-input" type="text" id="f_cause" placeholder="因为什么..." value="${val('cause')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">经过描述</label>
+            <textarea class="form-textarea" id="f_description" placeholder="发生了什么...">${val('description')}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">解决方式</label>
+            <textarea class="form-textarea" id="f_resolution" placeholder="怎么解决的...">${val('resolution')}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">经验教训</label>
+            <textarea class="form-textarea" id="f_lessons" placeholder="下次可以注意什么...">${val('lessons')}</textarea>
+          </div>`;
+      }
+    },
+
+    _checkCustomMilestone(select) {
+      const group = document.getElementById('customTitleGroup');
+      if (select.value === '其他（自定义）') {
+        group.style.display = 'block';
+      } else {
+        group.style.display = 'none';
+      }
+    },
+
+    closeModal() {
+      document.getElementById('modalOverlay').classList.remove('is-open');
+      this.editingType = null;
+      this.editingId = null;
+    },
+
+    // ---- 保存记录 ----
+    saveRecord() {
+      const type = this.editingType;
+      if (!type) return;
+
+      const get = (id) => document.getElementById(id)?.value?.trim() || '';
+      let data = {};
+
+      if (type === 'daily') {
+        const content = get('f_content');
+        if (!content) { showToast('请输入内容', 'warning'); return; }
+        data = { date: get('f_date') || Util.today(), content };
+        this._checkTaboos(content);
+      }
+      else if (type === 'milestone') {
+        let title = get('f_title');
+        if (title === '其他（自定义）') title = get('f_customTitle') || '未命名';
+        data = { date: get('f_date') || Util.today(), title, description: get('f_description') };
+      }
+      else if (type === 'preference') {
+        const value = get('f_value');
+        if (!value) { showToast('请输入喜好内容', 'warning'); return; }
+        data = { category: get('f_category'), value, note: get('f_note'), status: 'active' };
+      }
+      else if (type === 'taboo') {
+        const content = get('f_content');
+        if (!content) { showToast('请输入忌讳内容', 'warning'); return; }
+        data = { content, tags: get('f_tags') };
+      }
+      else if (type === 'expense') {
+        const amount = get('f_amount');
+        if (!amount) { showToast('请输入金额', 'warning'); return; }
+        data = { amount: parseFloat(amount), date: get('f_date') || Util.today(), note: get('f_note') };
+      }
+      else if (type === 'wish') {
+        const title = get('f_title');
+        if (!title) { showToast('请输入愿望', 'warning'); return; }
+        data = { title, description: get('f_description'), targetDate: get('f_targetDate'), completed: false };
+      }
+      else if (type === 'holiday') {
+        const name = get('f_name');
+        if (!name) { showToast('请输入节日名称', 'warning'); return; }
+        data = { name, month: parseInt(get('f_month')), day: parseInt(get('f_day')), giftSuggestion: get('f_giftSuggestion') };
+      }
+      else if (type === 'conflict') {
+        data = {
+          date: get('f_date') || Util.today(),
+          cause: get('f_cause'),
+          description: get('f_description'),
+          resolution: get('f_resolution'),
+          lessons: get('f_lessons')
+        };
+      }
+
+      if (this.editingId) {
+        DB.update(type, this.editingId, data);
+        showToast('已更新');
+      } else {
+        DB.add(type, data);
+        showToast('已保存');
+      }
+
+      this.closeModal();
+      this.renderAll();
+    },
+
+    // ---- 忌讳关键词检查（被动提醒）----
+    _checkTaboos(text) {
+      const taboos = DB.getAll('taboo');
+      if (taboos.length === 0) return;
+      const lower = text.toLowerCase();
+      const matched = taboos.filter(t => {
+        const content = (t.content || '').toLowerCase();
+        const tags = (t.tags || '').toLowerCase();
+        return content && (lower.includes(content) || tags.split(/[,，]/).some(tag => tag.trim() && lower.includes(tag.trim())));
+      });
+      if (matched.length > 0) {
+        setTimeout(() => {
+          showToast(`⚠️ 注意：这条记录可能涉及忌讳：${matched.map(m => m.content).join('、')}`, 'warning');
+        }, 800);
+      }
+    },
+
+    // ---- 删除确认 ----
+    confirmDelete(type, id) {
+      if (!confirm('确定删除这条记录？')) return;
+      DB.delete(type, id);
+      showToast('已删除');
+      this.renderAll();
+    },
+
+    // ---- 设置 ----
+    openSettings() {
+      const s = DB.getSettings() || {};
+      document.getElementById('setStartDate').value = s.startDate || '';
+      document.getElementById('setBirthday').value = s.birthday || '';
+      document.getElementById('setNickname').value = s.nickname || '';
+      document.getElementById('settingsOverlay').classList.add('is-open');
+    },
+    closeSettings() {
+      document.getElementById('settingsOverlay').classList.remove('is-open');
+    },
+    saveSettings() {
+      const startDate = document.getElementById('setStartDate').value;
+      const birthday = document.getElementById('setBirthday').value;
+      const nickname = document.getElementById('setNickname').value.trim();
+      if (!startDate) { showToast('请设置恋爱开始日期', 'warning'); return; }
+      if (!birthday) { showToast('请设置对方生日', 'warning'); return; }
+      DB.setSettings({ startDate, birthday, nickname });
+      this.closeSettings();
+      this.renderAll();
+      showToast('设置已保存');
+    },
+
+    // ---- 数据导出/导入 ----
+    exportData() {
+      const data = { settings: DB.getSettings() };
+      ['daily','milestone','preference','taboo','expense','wish','holiday','conflict'].forEach(k => {
+        data[k] = DB.getAll(k);
+      });
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `love-notes-backup-${Util.today()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('备份已导出');
+    },
+    importData() {
+      const input = document.getElementById('fileInput');
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if (data.settings) DB.setSettings(data.settings);
+            ['daily','milestone','preference','taboo','expense','wish','holiday','conflict'].forEach(k => {
+              if (data[k]) DB.save(k, data[k]);
+            });
+            this.closeSettings();
+            this.renderAll();
+            showToast('备份已导入');
+          } catch(err) {
+            showToast('文件格式错误', 'warning');
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    },
+    clearData() {
+      if (!confirm('确定清空所有数据？此操作不可恢复！')) return;
+      if (!confirm('再次确认：真的要清空全部恋爱笔记数据吗？')) return;
+      ['settings','daily','milestone','preference','taboo','expense','wish','holiday','conflict'].forEach(k => {
+        localStorage.removeItem(DB.prefix + k);
+      });
+      this.closeSettings();
+      this.renderAll();
+      showToast('数据已清空', 'warning');
+      setTimeout(() => this.openSettings(), 500);
+    }
+  };
+
+  // 启动
+  document.addEventListener('DOMContentLoaded', () => App.init());
+  </script>
+
+</body>
+</html>
