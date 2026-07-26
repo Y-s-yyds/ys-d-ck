@@ -1867,7 +1867,7 @@
           <div class="dashboard__card">
             <div class="dashboard__card-label">${s.myName || '我'}的生日</div>
             <div class="dashboard__card-value">${bdDays}</div>
-            <div class="dashboard__card-sub">天后 · ${Util.formatDateShort(nextBd)} · ${age}岁</div>
+            <div class="dashboard__card-sub">天后 · ${Util.formatDateShort(nextBd)}</div>
           </div>
         `);
       }
@@ -1881,7 +1881,7 @@
           <div class="dashboard__card">
             <div class="dashboard__card-label">${s.nickname || 'TA'}的生日</div>
             <div class="dashboard__card-value">${bdDays}</div>
-            <div class="dashboard__card-sub">天后 · ${Util.formatDateShort(nextBd)} · ${age}岁</div>
+            <div class="dashboard__card-sub">天后 · ${Util.formatDateShort(nextBd)}</div>
           </div>
         `);
       }
@@ -2034,7 +2034,7 @@
         return `<div class="memorial-profile">
           <div class="memorial-profile__name">${emoji} ${name || 'TA'}</div>
           <div class="memorial-profile__info">
-            ${age} 岁 · ${Util.formatDateShort(birthday)}<br>${bdStr}
+            ${Util.formatDateShort(birthday)}<br>${bdStr}
           </div>
         </div>`;
       };
