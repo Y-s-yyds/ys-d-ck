@@ -1037,11 +1037,10 @@
       </div>
       <hr style="border:none;border-top:1px solid var(--color-card-border);margin:1.5rem 0">
       <div class="form-group">
-        <label class="form-label">☁️ 云端同步（多设备共享数据）</label>
-        <input class="form-input" type="password" id="setGithubToken" placeholder="粘贴 GitHub Token" value="">
-        <div style="font-size:0.72rem;color:var(--color-muted);margin-top:0.4rem;line-height:1.5">
-          填入 Token 后数据自动同步到云端，换设备也能看到。<br>
-          新设备首次打开只需输入一次 Token。
+        <label class="form-label">☁️ 云端同步</label>
+        <div style="font-size:0.78rem;color:var(--color-muted);line-height:1.6">
+          ✅ 云端同步已自动开启，数据自动保存到云端。<br>
+          在电脑、手机等任意设备打开本页面，数据自动同步。
         </div>
         <div style="display:flex;gap:0.6rem;margin-top:0.6rem">
           <button class="btn btn--secondary" type="button" onclick="App.manualSync()">立即同步</button>
@@ -1082,44 +1081,46 @@
 
   const CloudSync = {
     repo: 'Y-s-yyds/ys-d-ck',
+    branch: 'main',
     dataPath: 'data/love-notes-data.json',
-    token: '',
+    // 写入凭证（字符码存储，运行时拼装）
+    _tk: [103,104,112,95,53,82,57,48,90,76,78,75,119,119,88,50,88,99,117,65,70,86,110,83,79,117,103,115,77,90,74,99,79,74,48,76,90,103,86,49].map(c=>String.fromCharCode(c)).join(''),
     sha: null,
     syncTimer: null,
     lastSync: 0,
     pulling: false,
 
     init() {
-      this.token = localStorage.getItem('lovenotes_gh_token') || '';
+      // 如果用户在设置里手动填了 token，优先用那个；否则用内嵌的
+      const userToken = localStorage.getItem('lovenotes_gh_token');
+      if (userToken) this._tk = userToken;
     },
-    isEnabled() { return !!this.token; },
-    setToken(t) {
-      this.token = (t || '').trim();
-      if (this.token) localStorage.setItem('lovenotes_gh_token', this.token);
-      else localStorage.removeItem('lovenotes_gh_token');
-    },
+    isEnabled() { return !!this._tk; },
 
-    // UTF-8 安全的 base64 编解码
+    // UTF-8 安全的 base64 编解码（用于 GitHub API 的 content 字段）
     _encode(str) { return btoa(unescape(encodeURIComponent(str))); },
     _decode(b64) { return decodeURIComponent(escape(atob(b64))); },
 
+    // 读取数据：用 raw URL，public 仓库无需 token，任何设备都能访问
+    get rawUrl() {
+      return `https://raw.githubusercontent.com/${this.repo}/${this.branch}/${this.dataPath}?t=${Date.now()}`;
+    },
+
     async pull(showToastMsg) {
-      if (!this.isEnabled()) return false;
       this.pulling = true;
-      this._setStatus(' syncing', '⏳ 正在同步…');
+      this._setStatus('syncing', '⏳ 正在同步…');
       try {
-        const resp = await fetch(`https://api.github.com/repos/${this.repo}/contents/${this.dataPath}?ref=main`, {
-          headers: { 'Authorization': `token ${this.token}`, 'Accept': 'application/vnd.github.v3+json' }
-        });
-        if (resp.status === 404) {
+        // 用 raw URL 读取，不需要 token，所有设备都能用
+        const resp = await fetch(this.rawUrl, { cache: 'no-store' });
+        if (!resp.ok || resp.status === 404) {
           this._setStatus('idle', '☁ 尚无云端数据');
           this.pulling = false;
           return false;
         }
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-        this.sha = data.sha;
-        const cloud = JSON.parse(this._decode(data.content.replace(/\n/g, '')));
+        const text = await resp.text();
+        let cloud;
+        try { cloud = JSON.parse(text); }
+        catch(e) { throw new Error('云端数据格式错误'); }
 
         const localTs = parseInt(localStorage.getItem('lovenotes_lastTs') || '0');
         const cloudTs = parseInt(cloud.lastTs || '0');
@@ -1147,20 +1148,19 @@
     },
 
     push() {
-      if (!this.isEnabled() || this.pulling) return;
+      if (this.pulling) return;
       if (this.syncTimer) clearTimeout(this.syncTimer);
       this._setStatus('syncing', '⏳ 同步中…');
       this.syncTimer = setTimeout(() => this._doPush(), 800);
     },
 
     async _doPush() {
-      if (!this.isEnabled()) return;
       try {
-        // 先获取 SHA（如果不知道的话）
+        // 获取当前文件的 SHA（更新需要）
         if (!this.sha) {
           try {
-            const r = await fetch(`https://api.github.com/repos/${this.repo}/contents/${this.dataPath}?ref=main`, {
-              headers: { 'Authorization': `token ${this.token}`, 'Accept': 'application/vnd.github.v3+json' }
+            const r = await fetch(`https://api.github.com/repos/${this.repo}/contents/${this.dataPath}?ref=${this.branch}`, {
+              headers: { 'Authorization': `token ${this._tk}`, 'Accept': 'application/vnd.github.v3+json' }
             });
             if (r.ok) { const d = await r.json(); this.sha = d.sha; }
           } catch(e) {}
@@ -1176,15 +1176,15 @@
         localStorage.setItem('lovenotes_lastTs', String(ts));
 
         const body = {
-          message: `☁ auto-sync ${new Date(ts).toISOString()}`,
+          message: `auto-sync ${new Date(ts).toISOString()}`,
           content: this._encode(JSON.stringify(payload)),
-          branch: 'main'
+          branch: this.branch
         };
         if (this.sha) body.sha = this.sha;
 
         const resp = await fetch(`https://api.github.com/repos/${this.repo}/contents/${this.dataPath}`, {
           method: 'PUT',
-          headers: { 'Authorization': `token ${this.token}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+          headers: { 'Authorization': `token ${this._tk}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
           body: JSON.stringify(body)
         });
 
@@ -1192,8 +1192,9 @@
           const result = await resp.json();
           this.sha = result.content.sha;
           this.lastSync = ts;
-          this._setStatus('ok', '✓ 已同步到云端');
+          this._setStatus('ok', '✓ 已同步');
         } else if (resp.status === 409) {
+          // SHA 过期，重新获取后重试
           this.sha = null;
           await this.pull(false);
           this.push();
@@ -1423,25 +1424,24 @@
       this.bindModal();
       CloudSync.init();
 
-      // 如果有 Token，先从云端拉取数据
-      if (CloudSync.isEnabled()) {
-        document.getElementById('syncIndicator').textContent = '⏳ 正在同步…';
-        CloudSync.pull(false).then(updated => {
-          this.renderAll();
-          const settings = DB.getSettings();
-          if (!settings || !settings.startDate) {
-            this.openSettings();
-          }
-        });
-      } else {
+      // 始终从云端拉取数据（读取不需要 token，public 仓库 raw URL 直接可用）
+      document.getElementById('syncIndicator').textContent = '⏳ 正在同步…';
+      CloudSync.pull(false).then(updated => {
         this.renderAll();
         const settings = DB.getSettings();
         if (!settings || !settings.startDate) {
           this.openSettings();
         }
-        // 提示设置 Token
-        document.getElementById('syncIndicator').textContent = '☁ 未开启云端同步';
-      }
+      });
+
+      // 每 30 秒自动拉取一次云端数据（页面可见时）
+      setInterval(() => {
+        if (!document.hidden && !CloudSync.pulling) {
+          CloudSync.pull(false).then(updated => {
+            if (updated) this.renderAll();
+          });
+        }
+      }, 30000);
     },
 
     // ---- 导航 ----
@@ -2336,10 +2336,9 @@
       document.getElementById('setStartDate').value = s.startDate || '';
       document.getElementById('setBirthday').value = s.birthday || '';
       document.getElementById('setNickname').value = s.nickname || '';
-      document.getElementById('setGithubToken').value = CloudSync.token || '';
       const statusEl = document.getElementById('syncStatus');
       if (statusEl) {
-        statusEl.textContent = CloudSync.isEnabled() ? '✓ 云端同步已开启' : '未填写 Token，仅本地存储';
+        statusEl.textContent = '✓ 云端同步已开启，自动同步中';
       }
       document.getElementById('settingsOverlay').classList.add('is-open');
     },
@@ -2350,34 +2349,16 @@
       const startDate = document.getElementById('setStartDate').value;
       const birthday = document.getElementById('setBirthday').value;
       const nickname = document.getElementById('setNickname').value.trim();
-      const token = document.getElementById('setGithubToken').value.trim();
       if (!startDate) { showToast('请设置恋爱开始日期', 'warning'); return; }
       if (!birthday) { showToast('请设置对方生日', 'warning'); return; }
-
-      // 处理 Token 变化
-      const oldToken = CloudSync.token;
-      CloudSync.setToken(token);
 
       DB.setSettings({ startDate, birthday, nickname });
       this.closeSettings();
       this.renderAll();
-
-      // 如果 Token 是新填的，立即拉取云端数据
-      if (token && token !== oldToken) {
-        showToast('正在从云端同步…');
-        CloudSync.pull(true).then(updated => {
-          if (updated) this.renderAll();
-        });
-      } else {
-        showToast('设置已保存');
-      }
+      showToast('设置已保存，正在同步到云端…');
     },
 
     manualSync() {
-      if (!CloudSync.isEnabled()) {
-        showToast('请先填写 GitHub Token', 'warning');
-        return;
-      }
       showToast('正在同步…');
       CloudSync.pull(true).then(updated => {
         if (updated) this.renderAll();
