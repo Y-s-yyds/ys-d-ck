@@ -1089,32 +1089,45 @@
     syncTimer: null,
     lastSync: 0,
     pulling: false,
+    pushPending: false,  // 是否有待推送的数据
 
     init() {
-      // 如果用户在设置里手动填了 token，优先用那个；否则用内嵌的
       const userToken = localStorage.getItem('lovenotes_gh_token');
       if (userToken) this._tk = userToken;
     },
     isEnabled() { return !!this._tk; },
 
-    // UTF-8 安全的 base64 编解码（用于 GitHub API 的 content 字段）
+    // UTF-8 安全的 base64 编解码
     _encode(str) { return btoa(unescape(encodeURIComponent(str))); },
     _decode(b64) { return decodeURIComponent(escape(atob(b64))); },
 
-    // 读取数据：用 raw URL，public 仓库无需 token，任何设备都能访问
     get rawUrl() {
       return `https://raw.githubusercontent.com/${this.repo}/${this.branch}/${this.dataPath}?t=${Date.now()}`;
     },
 
+    // 合并数据：按 ID 去重，保留本地和云端的所有条目
+    _mergeData(localList, cloudList) {
+      if (!cloudList || cloudList.length === 0) return localList;
+      if (!localList || localList.length === 0) return cloudList;
+      const ids = new Set(localList.map(i => i.id));
+      const merged = [...localList];
+      cloudList.forEach(c => { if (!ids.has(c.id)) merged.push(c); });
+      // 按 createdAt 降序排列
+      merged.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      return merged;
+    },
+
     async pull(showToastMsg) {
+      if (this.pulling) return false;
       this.pulling = true;
       this._setStatus('syncing', '⏳ 正在同步…');
       try {
-        // 用 raw URL 读取，不需要 token，所有设备都能用
         const resp = await fetch(this.rawUrl, { cache: 'no-store' });
         if (!resp.ok || resp.status === 404) {
           this._setStatus('idle', '☁ 尚无云端数据');
           this.pulling = false;
+          // 如果有待推送的数据，现在可以推了
+          if (this.pushPending) this.push();
           return false;
         }
         const text = await resp.text();
@@ -1122,61 +1135,63 @@
         try { cloud = JSON.parse(text); }
         catch(e) { throw new Error('云端数据格式错误'); }
 
-        const localTs = parseInt(localStorage.getItem('lovenotes_lastTs') || '0');
-        const cloudTs = parseInt(cloud.lastTs || '0');
+        // 合并数据而不是覆盖（保留本地新数据 + 云端数据）
+        if (cloud.settings) DB.setSettingsQuiet(cloud.settings);
+        DATA_KEYS.forEach(k => {
+          const local = DB.getAll(k);
+          const merged = this._mergeData(local, cloud[k]);
+          DB.saveQuiet(k, merged);
+        });
 
-        if (cloudTs > localTs) {
-          if (cloud.settings) DB.setSettingsQuiet(cloud.settings);
-          DATA_KEYS.forEach(k => { if (cloud[k]) DB.saveQuiet(k, cloud[k]); });
-          localStorage.setItem('lovenotes_lastTs', String(cloudTs));
-          this.lastSync = cloudTs;
-          this._setStatus('ok', '✓ 已从云端同步');
-          if (showToastMsg) showToast('已从云端同步最新数据 ☁');
-          this.pulling = false;
-          return true;
-        }
-        this._setStatus('ok', '✓ 数据已是最新');
+        const cloudTs = parseInt(cloud.lastTs || '0');
+        const localTs = parseInt(localStorage.getItem('lovenotes_lastTs') || '0');
+        localStorage.setItem('lovenotes_lastTs', String(Math.max(cloudTs, localTs)));
+        this.lastSync = Date.now();
+        this._setStatus('ok', '✓ 已同步');
+        if (showToastMsg) showToast('已从云端同步 ☁');
         this.pulling = false;
-        return false;
+        // 如果 pull 期间有新数据写入，现在推上去
+        if (this.pushPending) this.push();
+        return true;
       } catch(e) {
         console.error('CloudSync pull error:', e);
         this._setStatus('error', '⚠ 同步失败');
-        if (showToastMsg) showToast('云端同步失败，使用本地数据', 'warning');
+        if (showToastMsg) showToast('同步失败: ' + e.message, 'warning');
         this.pulling = false;
+        if (this.pushPending) this.push();
         return false;
       }
     },
 
     push() {
-      if (this.pulling) return;
+      this.pushPending = true;  // 标记有数据待推送
+      if (this.pulling) return;  // pull 完成后会自动调用 push
       if (this.syncTimer) clearTimeout(this.syncTimer);
       this._setStatus('syncing', '⏳ 同步中…');
-      this.syncTimer = setTimeout(() => this._doPush(), 800);
+      this.syncTimer = setTimeout(() => this._doPush(), 600);
     },
 
     async _doPush() {
+      if (!this._tk) { this._setStatus('error', '⚠ 无写入权限'); return; }
+      this.pushPending = false;
       try {
-        // 获取当前文件的 SHA（更新需要）
+        // 获取 SHA
         if (!this.sha) {
           try {
             const r = await fetch(`https://api.github.com/repos/${this.repo}/contents/${this.dataPath}?ref=${this.branch}`, {
               headers: { 'Authorization': `token ${this._tk}`, 'Accept': 'application/vnd.github.v3+json' }
             });
             if (r.ok) { const d = await r.json(); this.sha = d.sha; }
-          } catch(e) {}
+          } catch(e) { console.warn('SHA fetch failed:', e); }
         }
 
         const ts = Date.now();
-        const payload = {
-          lastTs: ts,
-          settings: DB.getSettings()
-        };
+        const payload = { lastTs: ts, settings: DB.getSettings() };
         DATA_KEYS.forEach(k => { payload[k] = DB.getAll(k); });
-
         localStorage.setItem('lovenotes_lastTs', String(ts));
 
         const body = {
-          message: `auto-sync ${new Date(ts).toISOString()}`,
+          message: `sync ${new Date(ts).toISOString()}`,
           content: this._encode(JSON.stringify(payload)),
           branch: this.branch
         };
@@ -1193,18 +1208,20 @@
           this.sha = result.content.sha;
           this.lastSync = ts;
           this._setStatus('ok', '✓ 已同步');
-        } else if (resp.status === 409) {
+        } else if (resp.status === 409 || resp.status === 422) {
           // SHA 过期，重新获取后重试
           this.sha = null;
-          await this.pull(false);
-          this.push();
+          this.push();  // 重新排队
         } else {
-          const err = await resp.json().catch(() => ({}));
-          throw new Error(err.message || `HTTP ${resp.status}`);
+          const errText = await resp.text();
+          let errMsg = `HTTP ${resp.status}`;
+          try { const err = JSON.parse(errText); errMsg = err.message || errMsg; } catch(e) {}
+          throw new Error(errMsg);
         }
       } catch(e) {
         console.error('CloudSync push error:', e);
         this._setStatus('error', '⚠ 同步失败');
+        showToast('同步失败: ' + e.message, 'warning');
       }
     },
 
@@ -1434,14 +1451,23 @@
         }
       });
 
-      // 每 30 秒自动拉取一次云端数据（页面可见时）
+      // 每 30 秒自动拉取云端数据（页面可见且没有待推送数据时）
       setInterval(() => {
-        if (!document.hidden && !CloudSync.pulling) {
+        if (!document.hidden && !CloudSync.pulling && !CloudSync.pushPending) {
           CloudSync.pull(false).then(updated => {
             if (updated) this.renderAll();
           });
         }
       }, 30000);
+
+      // 页面重新可见时立即拉取
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && !CloudSync.pulling) {
+          CloudSync.pull(false).then(updated => {
+            if (updated) this.renderAll();
+          });
+        }
+      });
     },
 
     // ---- 导航 ----
