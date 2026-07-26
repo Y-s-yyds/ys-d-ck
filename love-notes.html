@@ -441,6 +441,96 @@
        ============================================================ */
     .record-list { display: flex; flex-direction: column; gap: 0.8rem; }
 
+    /* ====== 纪念记录三栏布局 ====== */
+    .memorial-layout {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 0;
+      align-items: start;
+    }
+    .memorial-col {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+    .memorial-col__title {
+      text-align: center;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--color-pink);
+      padding: 0.4rem 0;
+      margin-bottom: 0.2rem;
+      border-bottom: 1px dashed var(--color-pink-soft);
+    }
+    .memorial-col--male .memorial-col__title { color: #6b8cce; border-color: rgba(107,140,206,0.25); }
+
+    /* 爱心容器 */
+    .memorial-heart {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 0.8rem;
+      align-self: center;
+      min-height: 120px;
+    }
+    .memorial-heart__svg {
+      width: 70px;
+      height: 63px;
+      animation: heartBeat 1.2s ease-in-out infinite;
+      filter: drop-shadow(0 0 12px rgba(232,67,147,0.45));
+    }
+    @keyframes heartBeat {
+      0%, 100% { transform: scale(1); }
+      15% { transform: scale(1.15); }
+      30% { transform: scale(1); }
+      45% { transform: scale(1.12); }
+      60% { transform: scale(1); }
+    }
+
+    /* 爱心周围闪烁小装饰 */
+    .memorial-heart__sparkle {
+      position: absolute;
+      font-size: 1rem;
+      opacity: 0;
+      animation: sparkleFloat 2.5s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .sparkle-1 { top: 0; left: 50%; transform: translateX(-50%); animation-delay: 0s; }
+    .sparkle-2 { top: 50%; right: -4px; transform: translateY(-50%); animation-delay: 0.8s; }
+    .sparkle-3 { bottom: 4px; left: 50%; transform: translateX(-50%); animation-delay: 1.6s; }
+    @keyframes sparkleFloat {
+      0%, 100% { opacity: 0; transform: translateX(-50%) translateY(0) scale(0.6); }
+      50% { opacity: 1; transform: translateX(-50%) translateY(-6px) scale(1); }
+    }
+    .sparkle-2 { animation-name: sparkleFloat2; }
+    @keyframes sparkleFloat2 {
+      0%, 100% { opacity: 0; transform: translateY(-50%) translateX(0) scale(0.6); }
+      50% { opacity: 1; transform: translateY(-50%) translateX(6px) scale(1); }
+    }
+    .sparkle-3 { animation-name: sparkleFloat3; }
+    @keyframes sparkleFloat3 {
+      0%, 100% { opacity: 0; transform: translateX(-50%) translateY(0) scale(0.6); }
+      50% { opacity: 1; transform: translateX(-50%) translateY(6px) scale(1); }
+    }
+
+    /* 移动端：爱心移到顶部，左右堆叠 */
+    @media (max-width: 640px) {
+      .memorial-layout {
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+      }
+      .memorial-heart {
+        order: -1;
+        padding: 0.4rem 0;
+        min-height: auto;
+      }
+      .memorial-heart__svg {
+        width: 50px;
+        height: 45px;
+      }
+    }
+
     .record-card {
       background: var(--color-card-bg);
       border: 1px solid var(--color-card-border);
@@ -986,7 +1076,7 @@
       <div class="record-list" id="list-conflict"></div>
     </div>
 
-    <!-- 纪念记录 -->
+    <!-- 纪念记录（三栏：男生 | 爱心 | 女生）-->
     <div class="tab-panel" id="panel-memorial">
       <div class="panel-header">
         <div>
@@ -995,7 +1085,25 @@
         </div>
         <button class="btn-add" onclick="App.openAdd('memorial')">+ 添加纪念</button>
       </div>
-      <div class="record-list" id="list-memorial"></div>
+      <div class="memorial-layout" id="list-memorial">
+        <div class="memorial-col memorial-col--male" id="memorial-male"></div>
+        <div class="memorial-heart" id="memorialHeart">
+          <svg viewBox="0 0 100 90" class="memorial-heart__svg">
+            <path d="M50 85 C20 60 0 45 0 28 C0 12 12 0 27 0 C36 0 43 5 50 13 C57 5 64 0 73 0 C88 0 100 12 100 28 C100 45 80 60 50 85Z" fill="url(#heartGrad)"/>
+            <defs>
+              <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#ff6b9d"/>
+                <stop offset="50%" style="stop-color:#e84393"/>
+                <stop offset="100%" style="stop-color:#fd79a8"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="memorial-heart__sparkle sparkle-1">✨</div>
+          <div class="memorial-heart__sparkle sparkle-2">💖</div>
+          <div class="memorial-heart__sparkle sparkle-3">💕</div>
+        </div>
+        <div class="memorial-col memorial-col--female" id="memorial-female"></div>
+      </div>
     </div>
 
   </main>
@@ -1707,6 +1815,10 @@
         this._renderHolidays(list, container);
         return;
       }
+      if (type === 'memorial') {
+        this._renderMemorial(list);
+        return;
+      }
 
       // 通用列表渲染
       const searchTerm = document.getElementById('search-' + type)?.value?.toLowerCase() || '';
@@ -1721,6 +1833,38 @@
 
       const settings = DB.getSettings();
       container.innerHTML = filtered.map(item => this._renderCard(type, item, settings)).join('');
+    },
+
+    // ---- 纪念记录：三栏布局（男生 | 爱心 | 女生）----
+    _renderMemorial(list) {
+      const maleCol = document.getElementById('memorial-male');
+      const femaleCol = document.getElementById('memorial-female');
+      const settings = DB.getSettings();
+
+      const male = list.filter(i => i.person === 'male');
+      const female = list.filter(i => i.person === 'female');
+
+      const renderCol = (items, person) => {
+        if (items.length === 0) {
+          const icon = person === 'male' ? '👨' : '👩';
+          return `<div class="empty-state" style="padding:1.5rem 0.8rem">
+            <div class="empty-state__icon">${icon}</div>
+            <div class="empty-state__text" style="font-size:0.8rem">还没有记录<br>点击右上角添加</div>
+          </div>`;
+        }
+        const title = person === 'male' ? '👨 男生纪念' : '👩 女生纪念';
+        return `<div class="memorial-col__title">${title} · ${items.length}条</div>`
+          + items.map(item => this._renderCard('memorial', item, settings)).join('');
+      };
+
+      maleCol.innerHTML = renderCol(male, 'male');
+      femaleCol.innerHTML = renderCol(female, 'female');
+
+      // 更新心形动画的可见性
+      const heart = document.getElementById('memorialHeart');
+      if (heart) {
+        heart.style.display = (male.length > 0 && female.length > 0) ? '' : 'none';
+      }
     },
 
     _emptyHTML(type) {
