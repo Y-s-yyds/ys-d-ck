@@ -240,6 +240,41 @@
       font-weight: 600;
     }
 
+    /* 实时时钟（时:分:秒 跳动） */
+    .dashboard__clock {
+      margin-top: 0.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+    .dashboard__clock-digit {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.2rem;
+      padding: 0.2rem 0.4rem;
+      font-size: clamp(1rem, 2.5vw, 1.5rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: #fff;
+      background: linear-gradient(135deg, #e84393, #ff6b9d);
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+      box-shadow: 0 2px 8px rgba(232,67,147,0.3);
+    }
+    .dashboard__clock-sep {
+      font-size: clamp(0.9rem, 2vw, 1.3rem);
+      font-weight: 600;
+      color: var(--color-pink);
+      margin: 0 0.15rem;
+      animation: clockBlink 1s step-end infinite;
+    }
+    @keyframes clockBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
     .dashboard__since {
       position: relative;
       font-weight: 300;
@@ -954,6 +989,8 @@
     @media (max-width: 768px) {
       .dashboard__cards { flex-direction: column; align-items: center; }
       .dashboard__card { width: 100%; max-width: 18rem; }
+      .dashboard__clock-digit { min-width: 1.8rem; font-size: clamp(0.85rem, 3vw, 1.15rem); padding: 0.15rem 0.3rem; }
+      .dashboard__clock-sep { font-size: 0.85rem; }
       .record-card__actions { opacity: 1; }
       .form-row { flex-direction: column; gap: 0; }
       .content { padding: 1.5rem 1rem 3rem; }
@@ -1004,6 +1041,13 @@
     <div class="reveal reveal-delay-2">
       <span class="dashboard__day-number" id="dayNumber">0</span>
       <span class="dashboard__day-suffix">天</span>
+    </div>
+    <div class="dashboard__clock reveal reveal-delay-2" id="liveClock">
+      <span class="dashboard__clock-digit" id="clockHours">00</span>
+      <span class="dashboard__clock-sep">:</span>
+      <span class="dashboard__clock-digit" id="clockMinutes">00</span>
+      <span class="dashboard__clock-sep">:</span>
+      <span class="dashboard__clock-digit" id="clockSeconds">00</span>
     </div>
     <p class="dashboard__since reveal reveal-delay-3" id="sinceText">请先设置开始日期</p>
 
@@ -1734,6 +1778,41 @@
       });
     },
 
+    // ---- 实时时钟（每秒跳动）----
+    _timerStartDate: null,
+    _timerInterval: null,
+
+    startLiveTimer(startDate) {
+      this._timerStartDate = startDate;
+      if (this._timerInterval) clearInterval(this._timerInterval);
+      this._updateLiveTimer();
+      this._timerInterval = setInterval(() => this._updateLiveTimer(), 1000);
+    },
+
+    _updateLiveTimer() {
+      if (!this._timerStartDate) return;
+      const start = new Date(this._timerStartDate);
+      const now = new Date();
+      let diff = Math.floor((now - start) / 1000); // 总秒数
+
+      const days = Math.floor(diff / 86400);
+      diff = diff % 86400;
+      const hours = Math.floor(diff / 3600);
+      diff = diff % 3600;
+      const minutes = Math.floor(diff / 60);
+      const seconds = diff % 60;
+
+      const dayEl = document.getElementById('dayNumber');
+      if (dayEl) dayEl.textContent = days;
+
+      const hEl = document.getElementById('clockHours');
+      const mEl = document.getElementById('clockMinutes');
+      const sEl = document.getElementById('clockSeconds');
+      if (hEl) hEl.textContent = String(hours).padStart(2, '0');
+      if (mEl) mEl.textContent = String(minutes).padStart(2, '0');
+      if (sEl) sEl.textContent = String(seconds).padStart(2, '0');
+    },
+
     // ---- 仪表盘 ----
     renderDashboard() {
       const s = DB.getSettings();
@@ -1745,13 +1824,19 @@
         dayEl.textContent = '0';
         sinceEl.textContent = '请先设置开始日期';
         cardsEl.innerHTML = '';
+        document.getElementById('liveClock').style.display = 'none';
         return;
       }
 
-      const days = Util.daysSince(s.startDate);
+      const startDate = s.startDate;
+      const days = Util.daysSince(startDate);
       dayEl.textContent = days;
       const name = (s.myName && s.nickname) ? `${s.myName} ❤ ${s.nickname}` : (s.nickname ? `和 ${s.nickname}` : '在一起');
-      sinceEl.textContent = `${name} · 自 ${Util.formatDate(s.startDate)}`;
+      sinceEl.textContent = `${name} · 自 ${Util.formatDate(startDate)}`;
+
+      // 启动实时时钟
+      document.getElementById('liveClock').style.display = '';
+      this.startLiveTimer(startDate);
 
       // 倒计时卡片
       const cards = [];
