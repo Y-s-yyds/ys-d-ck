@@ -2,10 +2,10 @@
 <!-- ====================================================================
      恋爱笔记 — 记录每一天
      功能：日期计时 / 日常记录 / 里程碑 / 喜好档案 / 忌讳清单 /
-           消费流水 / 愿望清单 / 节日提醒 / 冲突复盘
+           消费流水 / 愿望清单 / 节日提醒 / 冲突复盘 / 纪念记录
      配色：粉白浪漫 #fff5f7 / #ff6b9d / #e84393 / #ffffff
      字体：Inter (Google Fonts)
-     数据：localStorage（预留 Supabase 接口）
+     数据：localStorage + GitHub API 云端同步
      ==================================================================== -->
 <html lang="zh-CN">
 <head>
@@ -859,9 +859,12 @@
       <!-- 动态生成倒计时卡片 -->
     </div>
 
-    <button class="dashboard__settings-btn" onclick="App.openSettings()">
-      ⚙ 设置
-    </button>
+    <div style="display:flex;align-items:center;gap:0.8rem;justify-content:center;margin-top:1.5rem">
+      <button class="dashboard__settings-btn" onclick="App.openSettings()">
+        ⚙ 设置
+      </button>
+      <span id="syncIndicator" style="font-size:0.7rem;color:var(--color-muted);min-height:0.9rem"></span>
+    </div>
   </section>
 
   <!-- ====== Tab 导航 ====== -->
@@ -874,6 +877,7 @@
     <button class="tab" data-tab="wish"><span class="tab__icon">✨</span>愿望</button>
     <button class="tab" data-tab="holiday"><span class="tab__icon">🎉</span>节日</button>
     <button class="tab" data-tab="conflict"><span class="tab__icon">🔥</span>复盘</button>
+    <button class="tab" data-tab="memorial"><span class="tab__icon">💝</span>纪念</button>
   </nav>
 
   <!-- ====== 内容区 ====== -->
@@ -982,6 +986,18 @@
       <div class="record-list" id="list-conflict"></div>
     </div>
 
+    <!-- 纪念记录 -->
+    <div class="tab-panel" id="panel-memorial">
+      <div class="panel-header">
+        <div>
+          <div class="panel-header__title">💝 纪念记录</div>
+          <div class="panel-header__count" id="count-memorial"></div>
+        </div>
+        <button class="btn-add" onclick="App.openAdd('memorial')">+ 添加纪念</button>
+      </div>
+      <div class="record-list" id="list-memorial"></div>
+    </div>
+
   </main>
 
   <!-- ====== 页脚 ====== -->
@@ -1021,6 +1037,19 @@
       </div>
       <hr style="border:none;border-top:1px solid var(--color-card-border);margin:1.5rem 0">
       <div class="form-group">
+        <label class="form-label">☁️ 云端同步（多设备共享数据）</label>
+        <input class="form-input" type="password" id="setGithubToken" placeholder="粘贴 GitHub Token" value="">
+        <div style="font-size:0.72rem;color:var(--color-muted);margin-top:0.4rem;line-height:1.5">
+          填入 Token 后数据自动同步到云端，换设备也能看到。<br>
+          新设备首次打开只需输入一次 Token。
+        </div>
+        <div style="display:flex;gap:0.6rem;margin-top:0.6rem">
+          <button class="btn btn--secondary" type="button" onclick="App.manualSync()">立即同步</button>
+        </div>
+        <div id="syncStatus" style="font-size:0.72rem;margin-top:0.5rem;color:var(--color-muted)"></div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--color-card-border);margin:1.5rem 0">
+      <div class="form-group">
         <label class="form-label">数据管理</label>
         <div style="display:flex;gap:0.6rem;flex-wrap:wrap">
           <button class="btn btn--secondary" type="button" onclick="App.exportData()">导出备份</button>
@@ -1044,7 +1073,149 @@
   <script>
   /*
    * ============================================================
-   *  数据层 — localStorage（预留 Supabase 接口）
+   *  云端同步层 — GitHub Contents API
+   *  数据以 JSON 文件存于仓库 data/love-notes-data.json
+   *  Token 存 localStorage（不入源码，安全）
+   * ============================================================
+   */
+  const DATA_KEYS = ['daily','milestone','preference','taboo','expense','wish','holiday','conflict','memorial'];
+
+  const CloudSync = {
+    repo: 'Y-s-yyds/ys-d-ck',
+    dataPath: 'data/love-notes-data.json',
+    token: '',
+    sha: null,
+    syncTimer: null,
+    lastSync: 0,
+    pulling: false,
+
+    init() {
+      this.token = localStorage.getItem('lovenotes_gh_token') || '';
+    },
+    isEnabled() { return !!this.token; },
+    setToken(t) {
+      this.token = (t || '').trim();
+      if (this.token) localStorage.setItem('lovenotes_gh_token', this.token);
+      else localStorage.removeItem('lovenotes_gh_token');
+    },
+
+    // UTF-8 安全的 base64 编解码
+    _encode(str) { return btoa(unescape(encodeURIComponent(str))); },
+    _decode(b64) { return decodeURIComponent(escape(atob(b64))); },
+
+    async pull(showToastMsg) {
+      if (!this.isEnabled()) return false;
+      this.pulling = true;
+      this._setStatus(' syncing', '⏳ 正在同步…');
+      try {
+        const resp = await fetch(`https://api.github.com/repos/${this.repo}/contents/${this.dataPath}?ref=main`, {
+          headers: { 'Authorization': `token ${this.token}`, 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (resp.status === 404) {
+          this._setStatus('idle', '☁ 尚无云端数据');
+          this.pulling = false;
+          return false;
+        }
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        this.sha = data.sha;
+        const cloud = JSON.parse(this._decode(data.content.replace(/\n/g, '')));
+
+        const localTs = parseInt(localStorage.getItem('lovenotes_lastTs') || '0');
+        const cloudTs = parseInt(cloud.lastTs || '0');
+
+        if (cloudTs > localTs) {
+          if (cloud.settings) DB.setSettingsQuiet(cloud.settings);
+          DATA_KEYS.forEach(k => { if (cloud[k]) DB.saveQuiet(k, cloud[k]); });
+          localStorage.setItem('lovenotes_lastTs', String(cloudTs));
+          this.lastSync = cloudTs;
+          this._setStatus('ok', '✓ 已从云端同步');
+          if (showToastMsg) showToast('已从云端同步最新数据 ☁');
+          this.pulling = false;
+          return true;
+        }
+        this._setStatus('ok', '✓ 数据已是最新');
+        this.pulling = false;
+        return false;
+      } catch(e) {
+        console.error('CloudSync pull error:', e);
+        this._setStatus('error', '⚠ 同步失败');
+        if (showToastMsg) showToast('云端同步失败，使用本地数据', 'warning');
+        this.pulling = false;
+        return false;
+      }
+    },
+
+    push() {
+      if (!this.isEnabled() || this.pulling) return;
+      if (this.syncTimer) clearTimeout(this.syncTimer);
+      this._setStatus('syncing', '⏳ 同步中…');
+      this.syncTimer = setTimeout(() => this._doPush(), 800);
+    },
+
+    async _doPush() {
+      if (!this.isEnabled()) return;
+      try {
+        // 先获取 SHA（如果不知道的话）
+        if (!this.sha) {
+          try {
+            const r = await fetch(`https://api.github.com/repos/${this.repo}/contents/${this.dataPath}?ref=main`, {
+              headers: { 'Authorization': `token ${this.token}`, 'Accept': 'application/vnd.github.v3+json' }
+            });
+            if (r.ok) { const d = await r.json(); this.sha = d.sha; }
+          } catch(e) {}
+        }
+
+        const ts = Date.now();
+        const payload = {
+          lastTs: ts,
+          settings: DB.getSettings()
+        };
+        DATA_KEYS.forEach(k => { payload[k] = DB.getAll(k); });
+
+        localStorage.setItem('lovenotes_lastTs', String(ts));
+
+        const body = {
+          message: `☁ auto-sync ${new Date(ts).toISOString()}`,
+          content: this._encode(JSON.stringify(payload)),
+          branch: 'main'
+        };
+        if (this.sha) body.sha = this.sha;
+
+        const resp = await fetch(`https://api.github.com/repos/${this.repo}/contents/${this.dataPath}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `token ${this.token}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+          body: JSON.stringify(body)
+        });
+
+        if (resp.ok) {
+          const result = await resp.json();
+          this.sha = result.content.sha;
+          this.lastSync = ts;
+          this._setStatus('ok', '✓ 已同步到云端');
+        } else if (resp.status === 409) {
+          this.sha = null;
+          await this.pull(false);
+          this.push();
+        } else {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.message || `HTTP ${resp.status}`);
+        }
+      } catch(e) {
+        console.error('CloudSync push error:', e);
+        this._setStatus('error', '⚠ 同步失败');
+      }
+    },
+
+    _setStatus(state, text) {
+      const el = document.getElementById('syncIndicator');
+      if (el) el.textContent = text;
+    }
+  };
+
+  /*
+   * ============================================================
+   *  数据层 — localStorage + 自动云端同步
    * ============================================================
    */
   const DB = {
@@ -1056,12 +1227,20 @@
     },
     setSettings(s) {
       localStorage.setItem(this.prefix + 'settings', JSON.stringify(s));
+      CloudSync.push();
+    },
+    setSettingsQuiet(s) {
+      localStorage.setItem(this.prefix + 'settings', JSON.stringify(s));
     },
     getAll(key) {
       try { return JSON.parse(localStorage.getItem(this.prefix + key)) || []; }
       catch(e) { return []; }
     },
     save(key, data) {
+      localStorage.setItem(this.prefix + key, JSON.stringify(data));
+      CloudSync.push();
+    },
+    saveQuiet(key, data) {
       localStorage.setItem(this.prefix + key, JSON.stringify(data));
     },
     add(key, item) {
@@ -1242,12 +1421,26 @@
       this.bindNav();
       this.bindTabs();
       this.bindModal();
-      this.renderAll();
+      CloudSync.init();
 
-      // 首次访问 → 打开设置
-      const settings = DB.getSettings();
-      if (!settings || !settings.startDate) {
-        this.openSettings();
+      // 如果有 Token，先从云端拉取数据
+      if (CloudSync.isEnabled()) {
+        document.getElementById('syncIndicator').textContent = '⏳ 正在同步…';
+        CloudSync.pull(false).then(updated => {
+          this.renderAll();
+          const settings = DB.getSettings();
+          if (!settings || !settings.startDate) {
+            this.openSettings();
+          }
+        });
+      } else {
+        this.renderAll();
+        const settings = DB.getSettings();
+        if (!settings || !settings.startDate) {
+          this.openSettings();
+        }
+        // 提示设置 Token
+        document.getElementById('syncIndicator').textContent = '☁ 未开启云端同步';
       }
     },
 
@@ -1320,7 +1513,7 @@
     // ---- 渲染所有 ----
     renderAll() {
       this.renderDashboard();
-      ['daily','milestone','preference','taboo','expense','wish','holiday','conflict'].forEach(t => {
+      ['daily','milestone','preference','taboo','expense','wish','holiday','conflict','memorial'].forEach(t => {
         this.renderList(t);
       });
     },
@@ -1499,7 +1692,7 @@
         daily: '还没有日常记录', milestone: '还没有里程碑',
         preference: '还没有喜好记录', taboo: '还没有忌讳记录',
         expense: '还没有消费记录', wish: '愿望清单是空的',
-        holiday: '还没有自定义节日', conflict: '还没有冲突记录'
+        holiday: '还没有自定义节日', conflict: '还没有冲突记录', memorial: '还没有纪念记录'
       };
       return `<div class="empty-state"><div class="empty-state__icon">💕</div><div class="empty-state__text">${labels[type] || '暂无数据'}<br>点击右上角按钮开始记录</div></div>`;
     },
@@ -1587,6 +1780,31 @@
             ${item.description ? `<div class="record-card__body">${Util.escapeHtml(item.description)}</div>` : ''}
             ${item.resolution ? `<div class="record-card__body" style="margin-top:0.6rem;color:var(--color-success)">解决：${Util.escapeHtml(item.resolution)}</div>` : ''}
             ${item.lessons ? `<div class="record-card__body" style="margin-top:0.4rem;color:var(--color-pink);font-size:0.82rem">💡 ${Util.escapeHtml(item.lessons)}</div>` : ''}
+          </div>`;
+      }
+
+      if (type === 'memorial') {
+        const personLabel = item.person === 'male' ? '👨 男生' : '👩 女生';
+        const personColor = item.person === 'male' ? '#6b8cce' : 'var(--color-pink)';
+        const daysAgo = item.date ? Util.daysSince(item.date) : null;
+        const daysText = daysAgo !== null
+          ? (daysAgo === 0 ? '今天' : daysAgo > 0 ? `已过 ${daysAgo} 天` : `还有 ${Math.abs(daysAgo)} 天`)
+          : '';
+        return `
+          <div class="record-card">
+            <div class="record-card__header">
+              <div>
+                ${dateHTML}
+                <span style="display:inline-block;margin-left:0.5rem;padding:0.15rem 0.6rem;border-radius:999px;font-size:0.75rem;font-weight:600;color:#fff;background:${personColor}">${personLabel}</span>
+                ${daysText ? `<span style="margin-left:0.5rem;font-size:0.78rem;color:var(--color-muted)">${daysText}</span>` : ''}
+              </div>
+              <div class="record-card__actions">
+                <button class="icon-btn" onclick="App.openEdit('memorial','${item.id}')" title="编辑">✎</button>
+                <button class="icon-btn icon-btn--danger" onclick="App.confirmDelete('memorial','${item.id}')" title="删除">🗑</button>
+              </div>
+            </div>
+            ${item.title ? `<div class="record-card__title">${Util.escapeHtml(item.title)}</div>` : ''}
+            ${item.description ? `<div class="record-card__body">${Util.escapeHtml(item.description)}</div>` : ''}
           </div>`;
       }
 
@@ -1810,7 +2028,7 @@
       const titles = {
         daily: '日常记录', milestone: '里程碑', preference: '喜好',
         taboo: '忌讳', expense: '消费记录', wish: '愿望',
-        holiday: '节日', conflict: '冲突复盘'
+        holiday: '节日', conflict: '冲突复盘', memorial: '纪念记录'
       };
       return (isEdit ? '编辑' : '添加') + titles[type];
     },
@@ -1965,6 +2183,34 @@
             <textarea class="form-textarea" id="f_lessons" placeholder="下次可以注意什么...">${val('lessons')}</textarea>
           </div>`;
       }
+      else if (type === 'memorial') {
+        fields.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">记录对象 <span class="req">*</span></label>
+            <div style="display:flex;gap:0.8rem">
+              <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.95rem">
+                <input type="radio" name="f_person" value="female" ${val('person')!=='male'?'checked':''} style="accent-color:var(--color-pink)">
+                👩 女生
+              </label>
+              <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.95rem">
+                <input type="radio" name="f_person" value="male" ${val('person')==='male'?'checked':''} style="accent-color:#6b8cce">
+                👨 男生
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">日期 <span class="req">*</span></label>
+            <input class="form-input" type="date" id="f_date" value="${defaultDate}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">纪念事件 <span class="req">*</span></label>
+            <input class="form-input" type="text" id="f_title" placeholder="如：第一次收到她的手写信" value="${val('title')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">详细描述</label>
+            <textarea class="form-textarea" id="f_description" placeholder="记录这一刻的感受和细节...">${val('description')}</textarea>
+          </div>`;
+      }
     },
 
     _checkCustomMilestone(select) {
@@ -2035,6 +2281,17 @@
           lessons: get('f_lessons')
         };
       }
+      else if (type === 'memorial') {
+        const title = get('f_title');
+        if (!title) { showToast('请输入纪念事件', 'warning'); return; }
+        const personEl = document.querySelector('input[name="f_person"]:checked');
+        data = {
+          person: personEl ? personEl.value : 'female',
+          date: get('f_date') || Util.today(),
+          title,
+          description: get('f_description')
+        };
+      }
 
       if (this.editingId) {
         DB.update(type, this.editingId, data);
@@ -2079,6 +2336,11 @@
       document.getElementById('setStartDate').value = s.startDate || '';
       document.getElementById('setBirthday').value = s.birthday || '';
       document.getElementById('setNickname').value = s.nickname || '';
+      document.getElementById('setGithubToken').value = CloudSync.token || '';
+      const statusEl = document.getElementById('syncStatus');
+      if (statusEl) {
+        statusEl.textContent = CloudSync.isEnabled() ? '✓ 云端同步已开启' : '未填写 Token，仅本地存储';
+      }
       document.getElementById('settingsOverlay').classList.add('is-open');
     },
     closeSettings() {
@@ -2088,18 +2350,45 @@
       const startDate = document.getElementById('setStartDate').value;
       const birthday = document.getElementById('setBirthday').value;
       const nickname = document.getElementById('setNickname').value.trim();
+      const token = document.getElementById('setGithubToken').value.trim();
       if (!startDate) { showToast('请设置恋爱开始日期', 'warning'); return; }
       if (!birthday) { showToast('请设置对方生日', 'warning'); return; }
+
+      // 处理 Token 变化
+      const oldToken = CloudSync.token;
+      CloudSync.setToken(token);
+
       DB.setSettings({ startDate, birthday, nickname });
       this.closeSettings();
       this.renderAll();
-      showToast('设置已保存');
+
+      // 如果 Token 是新填的，立即拉取云端数据
+      if (token && token !== oldToken) {
+        showToast('正在从云端同步…');
+        CloudSync.pull(true).then(updated => {
+          if (updated) this.renderAll();
+        });
+      } else {
+        showToast('设置已保存');
+      }
+    },
+
+    manualSync() {
+      if (!CloudSync.isEnabled()) {
+        showToast('请先填写 GitHub Token', 'warning');
+        return;
+      }
+      showToast('正在同步…');
+      CloudSync.pull(true).then(updated => {
+        if (updated) this.renderAll();
+        else CloudSync.push();
+      });
     },
 
     // ---- 数据导出/导入 ----
     exportData() {
       const data = { settings: DB.getSettings() };
-      ['daily','milestone','preference','taboo','expense','wish','holiday','conflict'].forEach(k => {
+      ['daily','milestone','preference','taboo','expense','wish','holiday','conflict','memorial'].forEach(k => {
         data[k] = DB.getAll(k);
       });
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -2121,7 +2410,7 @@
           try {
             const data = JSON.parse(ev.target.result);
             if (data.settings) DB.setSettings(data.settings);
-            ['daily','milestone','preference','taboo','expense','wish','holiday','conflict'].forEach(k => {
+            ['daily','milestone','preference','taboo','expense','wish','holiday','conflict','memorial'].forEach(k => {
               if (data[k]) DB.save(k, data[k]);
             });
             this.closeSettings();
@@ -2138,9 +2427,11 @@
     clearData() {
       if (!confirm('确定清空所有数据？此操作不可恢复！')) return;
       if (!confirm('再次确认：真的要清空全部恋爱笔记数据吗？')) return;
-      ['settings','daily','milestone','preference','taboo','expense','wish','holiday','conflict'].forEach(k => {
+      ['settings','daily','milestone','preference','taboo','expense','wish','holiday','conflict','memorial'].forEach(k => {
         localStorage.removeItem(DB.prefix + k);
       });
+      localStorage.removeItem('lovenotes_lastTs');
+      CloudSync.push(); // 同步空数据到云端
       this.closeSettings();
       this.renderAll();
       showToast('数据已清空', 'warning');
