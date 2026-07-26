@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- ====================================================================
-     恋爱笔记 — 记录每一天
-     功能：日期计时 / 日常记录 / 里程碑 / 喜好档案 / 忌讳清单 /
+     恋爱美好记录 — 记录每一天
+     功能：日期计时 / 日常记录 / 里程碑 / 喜好档案 / 讨厌的 /
            消费流水 / 愿望清单 / 节日提醒 / 冲突复盘 / 纪念记录
      配色：粉白浪漫 #fff5f7 / #ff6b9d / #e84393 / #ffffff
      字体：Inter (Google Fonts)
@@ -11,7 +11,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>恋爱笔记 — 记录每一天</title>
+  <title>恋爱美好记录 — 记录每一天</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1022,7 +1022,7 @@
 
   <!-- ====== 仪表盘 ====== -->
   <section class="dashboard" id="dashboard">
-    <span class="dashboard__label reveal reveal-delay-1">♡ 恋爱笔记</span>
+    <span class="dashboard__label reveal reveal-delay-1">♡ 恋爱美好记录</span>
     <div class="reveal reveal-delay-2">
       <span class="dashboard__day-number" id="dayNumber">0</span>
       <span class="dashboard__day-suffix">天</span>
@@ -1053,7 +1053,7 @@
     <button class="tab is-active" data-tab="daily"><span class="tab__icon">📝</span>日常</button>
     <button class="tab" data-tab="milestone"><span class="tab__icon">🎯</span>里程碑</button>
     <button class="tab" data-tab="preference"><span class="tab__icon">❤️</span>喜好</button>
-    <button class="tab" data-tab="taboo"><span class="tab__icon">⚠️</span>忌讳</button>
+    <button class="tab" data-tab="taboo"><span class="tab__icon">⚠️</span>讨厌的</button>
     <button class="tab" data-tab="expense"><span class="tab__icon">💰</span>消费</button>
     <button class="tab" data-tab="wish"><span class="tab__icon">✨</span>愿望</button>
     <button class="tab" data-tab="holiday"><span class="tab__icon">🎉</span>节日</button>
@@ -1103,17 +1103,17 @@
       <div id="list-preference"></div>
     </div>
 
-    <!-- 忌讳清单 -->
+    <!-- 讨厌的 -->
     <div class="tab-panel" id="panel-taboo">
       <div class="panel-header">
         <div>
-          <div class="panel-header__title">⚠️ 忌讳清单</div>
+          <div class="panel-header__title">⚠️ 讨厌的</div>
           <div class="panel-header__count" id="count-taboo"></div>
         </div>
-        <button class="btn-add" onclick="App.openAdd('taboo')">+ 添加忌讳</button>
+        <button class="btn-add" onclick="App.openAdd('taboo')">+ 添加讨厌的</button>
       </div>
       <div class="search-box">
-        <input class="form-input" type="text" id="search-taboo" placeholder="搜索忌讳关键词..." oninput="App.renderList('taboo')">
+        <input class="form-input" type="text" id="search-taboo" placeholder="搜索讨厌的关键词..." oninput="App.renderList('taboo')">
       </div>
       <div class="record-list" id="list-taboo"></div>
     </div>
@@ -1202,7 +1202,7 @@
   </main>
 
   <!-- ====== 页脚 ====== -->
-  <footer class="footer">© 2026 恋爱笔记 — 记录每一天 💕</footer>
+  <footer class="footer">© 2026 恋爱美好记录 — 记录每一天 💕</footer>
 
   <!-- ====== 弹窗：添加/编辑记录 ====== -->
   <div class="modal-overlay" id="modalOverlay">
@@ -2086,7 +2086,7 @@
     _emptyHTML(type) {
       const labels = {
         daily: '还没有日常记录', milestone: '还没有里程碑',
-        preference: '还没有喜好记录', taboo: '还没有忌讳记录',
+        preference: '还没有喜好记录', taboo: '还没有讨厌的记录',
         expense: '还没有消费记录', wish: '愿望清单是空的',
         holiday: '还没有自定义节日', conflict: '还没有冲突记录', memorial: '还没有纪念记录'
       };
@@ -2097,6 +2097,8 @@
       const date = item.date || '';
       const dayTag = settings ? Util.getDayTag(date, settings.startDate) : '';
       const dateHTML = date ? `<div class="record-card__date">${Util.formatDate(date)} <span class="record-card__day-tag">${dayTag}</span></div>` : '';
+      const maleName = (settings && settings.myName) || '男生';
+      const femaleName = (settings && settings.nickname) || '女生';
 
       if (type === 'daily') {
         return `
@@ -2131,9 +2133,9 @@
 
       if (type === 'taboo') {
         const personBadge = item.person === 'male'
-          ? '<span style="display:inline-block;padding:0.1rem 0.5rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:#6b8cce;margin-right:0.4rem">👨 男生</span>'
+          ? '<span style="display:inline-block;padding:0.1rem 0.5rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:#6b8cce;margin-right:0.4rem">👨 ${maleName}</span>'
           : (item.person === 'female'
-            ? '<span style="display:inline-block;padding:0.1rem 0.5rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:var(--color-pink);margin-right:0.4rem">👩 女生</span>'
+            ? '<span style="display:inline-block;padding:0.1rem 0.5rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:var(--color-pink);margin-right:0.4rem">👩 ${femaleName}</span>'
             : '');
         return `
           <div class="record-card">
@@ -2185,7 +2187,7 @@
       }
 
       if (type === 'memorial') {
-        const personLabel = item.person === 'male' ? '👨 男生' : '👩 女生';
+        const personLabel = item.person === 'male' ? '👨 ${maleName}' : '👩 ${femaleName}';
         const personColor = item.person === 'male' ? '#6b8cce' : 'var(--color-pink)';
         const daysAgo = item.date ? Util.daysSince(item.date) : null;
         const daysText = daysAgo !== null
@@ -2431,7 +2433,7 @@
     _formTitle(type, isEdit) {
       const titles = {
         daily: '日常记录', milestone: '里程碑', preference: '喜好',
-        taboo: '忌讳', expense: '消费记录', wish: '愿望',
+        taboo: '讨厌的', expense: '消费记录', wish: '愿望',
         holiday: '节日', conflict: '冲突复盘', memorial: '纪念记录'
       };
       return (isEdit ? '编辑' : '添加') + titles[type];
@@ -2442,6 +2444,9 @@
       const today = Util.today();
       const val = (key) => item ? (item[key] || '') : '';
       const defaultDate = val('date') || today;
+      const s = DB.getSettings() || {};
+      const maleName = s.myName || '男生';
+      const femaleName = s.nickname || '女生';
 
       if (type === 'daily') {
         fields.innerHTML = `
@@ -2485,10 +2490,10 @@
             <label class="form-label">对象</label>
             <div style="display:flex;gap:1.2rem;padding-top:0.2rem">
               <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
-                <input type="radio" name="f_person" value="female" ${val('person')!=='male'?'checked':''} style="accent-color:var(--color-pink)"> 👩 女生
+                <input type="radio" name="f_person" value="female" ${val('person')!=='male'?'checked':''} style="accent-color:var(--color-pink)"> 👩 ${femaleName}
               </label>
               <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
-                <input type="radio" name="f_person" value="male" ${val('person')==='male'?'checked':''} style="accent-color:#6b8cce"> 👨 男生
+                <input type="radio" name="f_person" value="male" ${val('person')==='male'?'checked':''} style="accent-color:#6b8cce"> 👨 ${maleName}
               </label>
             </div>
           </div>
@@ -2513,10 +2518,10 @@
             <label class="form-label">对象</label>
             <div style="display:flex;gap:1.2rem;padding-top:0.2rem">
               <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
-                <input type="radio" name="f_person" value="female" ${val('person')!=='male'?'checked':''} style="accent-color:var(--color-pink)"> 👩 女生
+                <input type="radio" name="f_person" value="female" ${val('person')!=='male'?'checked':''} style="accent-color:var(--color-pink)"> 👩 ${femaleName}
               </label>
               <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
-                <input type="radio" name="f_person" value="male" ${val('person')==='male'?'checked':''} style="accent-color:#6b8cce"> 👨 男生
+                <input type="radio" name="f_person" value="male" ${val('person')==='male'?'checked':''} style="accent-color:#6b8cce"> 👨 ${maleName}
               </label>
             </div>
           </div>
@@ -2616,11 +2621,11 @@
             <div style="display:flex;gap:0.8rem">
               <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.95rem">
                 <input type="radio" name="f_person" value="female" ${val('person')!=='male'?'checked':''} style="accent-color:var(--color-pink)">
-                👩 女生
+                👩 ${femaleName}
               </label>
               <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.95rem">
                 <input type="radio" name="f_person" value="male" ${val('person')==='male'?'checked':''} style="accent-color:#6b8cce">
-                👨 男生
+                👨 ${maleName}
               </label>
             </div>
           </div>
@@ -2685,7 +2690,7 @@
       }
       else if (type === 'taboo') {
         const content = get('f_content');
-        if (!content) { showToast('请输入忌讳内容', 'warning'); return; }
+        if (!content) { showToast('请输入讨厌的内容', 'warning'); return; }
         data = { content, tags: get('f_tags'), person: this._getFormPerson() };
       }
       else if (type === 'expense') {
@@ -2736,7 +2741,7 @@
       this.renderAll();
     },
 
-    // ---- 忌讳关键词检查（被动提醒）----
+    // ---- 讨厌的关键词检查 ----
     _checkTaboos(text) {
       const taboos = DB.getAll('taboo');
       if (taboos.length === 0) return;
@@ -2748,7 +2753,7 @@
       });
       if (matched.length > 0) {
         setTimeout(() => {
-          showToast(`⚠️ 注意：这条记录可能涉及忌讳：${matched.map(m => m.content).join('、')}`, 'warning');
+          showToast(`⚠️ 注意：可能涉及讨厌的：${matched.map(m => m.content).join('、')}`, 'warning');
         }, 800);
       }
     },
@@ -2851,7 +2856,7 @@
     },
     clearData() {
       if (!confirm('确定清空所有数据？此操作不可恢复！')) return;
-      if (!confirm('再次确认：真的要清空全部恋爱笔记数据吗？')) return;
+      if (!confirm('再次确认：真的要清空全部恋爱美好记录吗？')) return;
       ['settings','daily','milestone','preference','taboo','expense','wish','holiday','conflict','memorial'].forEach(k => {
         localStorage.removeItem(DB.prefix + k);
       });
