@@ -1240,8 +1240,8 @@
       <button class="modal__close" onclick="App.closeSettings()">×</button>
       <h3 class="modal__title">⚙ 设置</h3>
       <div class="form-group">
-        <label class="form-label">恋爱开始日期 <span class="req">*</span></label>
-        <input class="form-input" type="date" id="setStartDate">
+        <label class="form-label">恋爱开始时间 <span class="req">*</span></label>
+        <input class="form-input" type="datetime-local" id="setStartDate" step="1">
       </div>
       <div class="form-group">
         <label class="form-label">你的昵称</label>
@@ -1832,7 +1832,10 @@
       const days = Util.daysSince(startDate);
       dayEl.textContent = days;
       const name = (s.myName && s.nickname) ? `${s.myName} ❤ ${s.nickname}` : (s.nickname ? `和 ${s.nickname}` : '在一起');
-      sinceEl.textContent = `${name} · 自 ${Util.formatDate(startDate)}`;
+      const startDisplay = startDate.includes('T')
+        ? startDate.replace('T', ' ').slice(0, 16)
+        : startDate;
+      sinceEl.textContent = `${name} · ${startDisplay} 起`;
 
       // 启动实时时钟
       document.getElementById('liveClock').style.display = '';
