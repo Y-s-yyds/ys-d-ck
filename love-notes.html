@@ -174,12 +174,46 @@
     }
 
     /* ============================================================
+       页眉便签
+       ============================================================ */
+    .header-memo {
+      padding: calc(var(--nav-height) + 0.5rem) 1.5rem 0;
+    }
+    .header-memo__input {
+      width: 100%;
+      max-width: 720px;
+      display: block;
+      margin: 0 auto;
+      padding: 0.5rem 0.8rem;
+      font-family: inherit;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      color: var(--color-text);
+      background: rgba(255,255,255,0.55);
+      border: 1px dashed var(--color-pink-soft);
+      border-radius: var(--radius-md);
+      resize: none;
+      outline: none;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .header-memo__input:focus {
+      border-color: var(--color-pink);
+      border-style: solid;
+      box-shadow: 0 0 0 3px rgba(255,107,157,0.1);
+      background: rgba(255,255,255,0.85);
+    }
+    .header-memo__input::placeholder {
+      color: var(--color-muted);
+      font-style: italic;
+    }
+
+    /* ============================================================
        仪表盘
        ============================================================ */
     .dashboard {
       position: relative;
       width: 100%;
-      padding: 1.5rem 1.5rem 3rem;
+      padding: 0.6rem 1.5rem 3rem;
       text-align: center;
       overflow: hidden;
       background: radial-gradient(ellipse at 50% 0%, rgba(255,107,157,0.12) 0%, transparent 60%), linear-gradient(180deg, #fff5f7 0%, #ffe4ec 100%);
