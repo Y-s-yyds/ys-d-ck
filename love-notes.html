@@ -1241,8 +1241,10 @@
       <h3 class="modal__title">⚙ 设置</h3>
       <div class="form-group">
         <label class="form-label">恋爱开始时间 <span class="req">*</span></label>
-        <input class="form-input" type="datetime-local" id="setStartDate" step="1">
-      </div>
+        <div style="display:flex;gap:0.5rem">
+          <input class="form-input" type="date" id="setStartDate" style="flex:1">
+          <input class="form-input" type="time" id="setStartTime" step="1" style="flex:0 0 120px">
+        </div>
       <div class="form-group">
         <label class="form-label">你的昵称</label>
         <input class="form-input" type="text" id="setMyName" placeholder="你的名字">
@@ -2737,7 +2739,15 @@
     // ---- 设置 ----
     openSettings() {
       const s = DB.getSettings() || {};
-      document.getElementById('setStartDate').value = s.startDate || '';
+      // 拆分日期和时间
+      const st = s.startDate || '';
+      if (st.includes('T')) {
+        document.getElementById('setStartDate').value = st.slice(0, 10);
+        document.getElementById('setStartTime').value = st.slice(11, 19);
+      } else {
+        document.getElementById('setStartDate').value = st;
+        document.getElementById('setStartTime').value = '00:00:00';
+      }
       document.getElementById('setMyName').value = s.myName || '';
       document.getElementById('setMyBirthday').value = s.myBirthday || '';
       document.getElementById('setNickname').value = s.nickname || '';
@@ -2753,13 +2763,15 @@
     },
     saveSettings() {
       const startDate = document.getElementById('setStartDate').value;
+      const startTime = document.getElementById('setStartTime').value || '00:00:00';
+      const startDateTime = startDate + 'T' + startTime;
       const myName = document.getElementById('setMyName').value.trim();
       const myBirthday = document.getElementById('setMyBirthday').value;
       const nickname = document.getElementById('setNickname').value.trim();
       const birthday = document.getElementById('setBirthday').value;
       if (!startDate) { showToast('请设置恋爱开始日期', 'warning'); return; }
 
-      DB.setSettings({ startDate, myName, myBirthday, nickname, birthday });
+      DB.setSettings({ startDate: startDateTime, myName, myBirthday, nickname, birthday });
       this.closeSettings();
       this.renderAll();
       showToast('设置已保存，正在同步到云端…');
