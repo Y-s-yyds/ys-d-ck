@@ -2045,8 +2045,8 @@
       const femaleCol = document.getElementById('memorial-female');
       const settings = DB.getSettings();
 
-      const male = list.filter(i => i.person === 'male');
-      const female = list.filter(i => i.person === 'female');
+      const male = list.filter(i => i.person && i.person.includes('male'));
+      const female = list.filter(i => i.person && i.person.includes('female'));
 
       // ---- 个人档案卡片 ----
       const buildProfile = (name, birthday, emoji) => {
@@ -2093,7 +2093,7 @@
       const renderCol = (items, person) => {
         const name = person === 'male' ? (settings.myName || '男生') : (settings.nickname || '女生');
         const birthday = person === 'male' ? settings.myBirthday : settings.birthday;
-        const emoji = person === 'male' ? '👨' : '👩';
+        const emoji = person === 'male' ? '♂' : '♀';
         const profileHTML = buildProfile(name, birthday, emoji);
 
         if (items.length === 0) {
@@ -2102,7 +2102,7 @@
             <div class="empty-state__text" style="font-size:0.78rem">还没有纪念记录<br>点击右上角添加</div>
           </div>`;
         }
-        const title = person === 'male' ? '👨 纪念记录' : '👩 纪念记录';
+        const title = person === 'male' ? '♂ 纪念记录' : '♀ 纪念记录';
         return profileHTML + `<div class="memorial-col__title">${title} · ${items.length}条</div>`
           + items.map(item => this._renderCard('memorial', item, settings)).join('');
       };
@@ -2166,11 +2166,11 @@
       }
 
       if (type === 'taboo') {
-        const personBadge = item.person === 'male'
-          ? '<span style="display:inline-block;padding:0.1rem 0.5rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:#6b8cce;margin-right:0.4rem">👨 ${maleName}</span>'
-          : (item.person === 'female'
-            ? '<span style="display:inline-block;padding:0.1rem 0.5rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:var(--color-pink);margin-right:0.4rem">👩 ${femaleName}</span>'
-            : '');
+        const persons = (item.person || 'female').split(',');
+        const personBadge = persons.map(p => {
+          if (p === 'male') return '<span style="display:inline-block;padding:0.1rem 0.5rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:#6b8cce;margin-right:0.3rem">♂ '+maleName+'</span>';
+          return '<span style="display:inline-block;padding:0.1rem 0.5rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:var(--color-pink);margin-right:0.3rem">♀ '+femaleName+'</span>';
+        }).join('');
         return `
           <div class="record-card">
             <div class="record-card__header">
@@ -2221,7 +2221,8 @@
       }
 
       if (type === 'memorial') {
-        const personLabel = item.person === 'male' ? '👨 ${maleName}' : '👩 ${femaleName}';
+        const persons = (item.person || 'female').split(',');
+        const personLabel = persons.map(p => p === 'male' ? '♂ '+maleName : '♀ '+femaleName).join(' ');
         const personColor = item.person === 'male' ? '#6b8cce' : 'var(--color-pink)';
         const daysAgo = item.date ? Util.daysSince(item.date) : null;
         const daysText = daysAgo !== null
@@ -2282,9 +2283,11 @@
         Object.entries(groups).forEach(([cat, items]) => {
           html += `<div class="record-card"><div class="record-card__header"><div class="record-card__title">${Util.escapeHtml(cat)}</div></div>`;
           items.forEach(i => {
-            const personBadge = i.person === 'male'
-              ? '<span style="display:inline-block;padding:0.1rem 0.4rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:#6b8cce;margin-right:0.4rem">👨</span>'
-              : '<span style="display:inline-block;padding:0.1rem 0.4rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:var(--color-pink);margin-right:0.4rem">👩</span>';
+            const persons = (i.person || 'female').split(',');
+            const personBadge = persons.map(p => {
+              if (p === 'male') return '<span style="display:inline-block;padding:0.1rem 0.4rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:#6b8cce;margin-right:0.3rem">♂</span>';
+              return '<span style="display:inline-block;padding:0.1rem 0.4rem;border-radius:999px;font-size:0.68rem;font-weight:600;color:#fff;background:var(--color-pink);margin-right:0.3rem">♀</span>';
+            }).join('');
             html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid rgba(255,107,157,0.06)">
               <span style="font-size:0.9rem;color:var(--color-text)">${personBadge}${Util.escapeHtml(i.value)}</span>
               <div style="display:flex;gap:0.4rem;align-items:center">
@@ -2524,10 +2527,10 @@
             <label class="form-label">对象</label>
             <div style="display:flex;gap:1.2rem;padding-top:0.2rem">
               <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
-                <input type="radio" name="f_person" value="female" ${val('person')!=='male'?'checked':''} style="accent-color:var(--color-pink)"> 👩 ${femaleName}
+                <input type="checkbox" name="f_person" value="female" ${val('person').includes('female')?'checked':''} style="accent-color:var(--color-pink)"> ♀ ${femaleName}
               </label>
               <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
-                <input type="radio" name="f_person" value="male" ${val('person')==='male'?'checked':''} style="accent-color:#6b8cce"> 👨 ${maleName}
+                <input type="checkbox" name="f_person" value="male" ${val('person').includes('male')?'checked':''} style="accent-color:#6b8cce"> ♂ ${maleName}
               </label>
             </div>
           </div>
@@ -2552,10 +2555,10 @@
             <label class="form-label">对象</label>
             <div style="display:flex;gap:1.2rem;padding-top:0.2rem">
               <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
-                <input type="radio" name="f_person" value="female" ${val('person')!=='male'?'checked':''} style="accent-color:var(--color-pink)"> 👩 ${femaleName}
+                <input type="checkbox" name="f_person" value="female" ${val('person').includes('female')?'checked':''} style="accent-color:var(--color-pink)"> ♀ ${femaleName}
               </label>
               <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
-                <input type="radio" name="f_person" value="male" ${val('person')==='male'?'checked':''} style="accent-color:#6b8cce"> 👨 ${maleName}
+                <input type="checkbox" name="f_person" value="male" ${val('person').includes('male')?'checked':''} style="accent-color:#6b8cce"> ♂ ${maleName}
               </label>
             </div>
           </div>
@@ -2652,14 +2655,12 @@
         fields.innerHTML = `
           <div class="form-group">
             <label class="form-label">记录对象 <span class="req">*</span></label>
-            <div style="display:flex;gap:0.8rem">
-              <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.95rem">
-                <input type="radio" name="f_person" value="female" ${val('person')!=='male'?'checked':''} style="accent-color:var(--color-pink)">
-                👩 ${femaleName}
+            <div style="display:flex;gap:1.2rem;padding-top:0.2rem">
+              <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
+                <input type="checkbox" name="f_person" value="female" ${val('person').includes('female')?'checked':''} style="accent-color:var(--color-pink)"> ♀ ${femaleName}
               </label>
-              <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.95rem">
-                <input type="radio" name="f_person" value="male" ${val('person')==='male'?'checked':''} style="accent-color:#6b8cce">
-                👨 ${maleName}
+              <label style="cursor:pointer;display:flex;align-items:center;gap:0.3rem;font-size:0.85rem">
+                <input type="checkbox" name="f_person" value="male" ${val('person').includes('male')?'checked':''} style="accent-color:#6b8cce"> ♂ ${maleName}
               </label>
             </div>
           </div>
@@ -2695,8 +2696,9 @@
 
     // ---- 保存记录 ----
     _getFormPerson() {
-      const el = document.querySelector('input[name="f_person"]:checked');
-      return el ? el.value : 'female';
+      const els = document.querySelectorAll('input[name="f_person"]:checked');
+      if (els.length === 0) return 'female';
+      return Array.from(els).map(e => e.value).join(',');
     },
 
     saveRecord() {
@@ -2754,9 +2756,8 @@
       else if (type === 'memorial') {
         const title = get('f_title');
         if (!title) { showToast('请输入纪念事件', 'warning'); return; }
-        const personEl = document.querySelector('input[name="f_person"]:checked');
         data = {
-          person: personEl ? personEl.value : 'female',
+          person: this._getFormPerson(),
           date: get('f_date') || Util.today(),
           title,
           description: get('f_description')
